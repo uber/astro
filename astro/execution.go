@@ -30,6 +30,7 @@ type terraformExecution interface {
 	ID() string
 	ModuleConfig() conf.Module
 	Variables() map[string]string
+	TerraformParameters() []string
 }
 
 // execution represents the execution of a module with some variable
@@ -41,6 +42,9 @@ type execution struct {
 	// variables is a map of variables to be passed during the
 	// execution.
 	variables map[string]string
+
+	// terraformParameters is a list of additional Terraform parameters for this execution
+	terraformParameters []string
 }
 
 // Name is an alias for ID; so that terraform/dag trace output makes
@@ -86,10 +90,14 @@ func (e *execution) ModuleConfig() conf.Module {
 	return *e.moduleConf
 }
 
-// Variables returns a copy of the configuration of the module
-// associated with this execution.
+// Variables returns a reference to the variables set for this execution
 func (e *execution) Variables() map[string]string {
 	return e.variables
+}
+
+// TerraformParameters returns reference to the Terraform parameters set for this execution
+func (e *execution) TerraformParameters() []string {
+	return e.terraformParameters
 }
 
 // unboundExecution represents a module execution before runtime
@@ -129,8 +137,9 @@ func (e *unboundExecution) bind(userVars map[string]string) (*boundExecution, er
 
 	return &boundExecution{
 		&execution{
-			moduleConf: &boundConfig,
-			variables:  boundVars,
+			moduleConf:          &boundConfig,
+			variables:           boundVars,
+			terraformParameters: e.TerraformParameters(),
 		},
 	}, nil
 }

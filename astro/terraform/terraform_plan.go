@@ -34,6 +34,8 @@ func (s *Session) Plan() (Result, error) {
 		args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
 	}
 
+	args = append(args, s.config.TerraformParameters...)
+
 	process, err := s.terraformCommand(args, []int{0, 2})
 	if err != nil {
 		return nil, err

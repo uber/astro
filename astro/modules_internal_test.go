@@ -71,5 +71,36 @@ func TestModuleExecution(t *testing.T) {
 		},
 	}
 
-	assert.EqualValues(t, expected, newModule(conf).executions(NoUserVariables()))
+	assert.EqualValues(t, expected, newModule(conf).executions(NoExecutionParameters()))
+}
+
+func TestModuleExecutionTarget(t *testing.T) {
+	t.Parallel()
+
+	conf := conf.Module{
+		Name: "TestModule",
+		Path: "test",
+		Variables: []conf.Variable{
+			conf.Variable{
+				Name: "aws_region",
+			},
+		},
+	}
+
+	expected := executionSet{
+		&unboundExecution{
+			&execution{
+				moduleConf: &conf,
+				variables: map[string]string{
+					"aws_region": "{aws_region}",
+				},
+				terraformParameters: []string{"-target", "one.terraform.entity", "-target", "another.terraform.entity"},
+			},
+		},
+	}
+
+	assert.EqualValues(t, expected, newModule(conf).executions(ExecutionParameters{
+		UserVars:            NoUserVariables(),
+		TerraformParameters: []string{"-target", "one.terraform.entity", "-target", "another.terraform.entity"},
+	}))
 }

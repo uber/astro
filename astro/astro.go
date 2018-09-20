@@ -71,7 +71,7 @@ func NewProject(config conf.Project) (*Project, error) {
 	}
 
 	// check dependency graph is all good
-	if _, err := project.executions(nil, NoUserVariables()).graph(); err != nil {
+	if _, err := project.executions(NoExecutionParameters()).graph(); err != nil {
 		return nil, err
 	}
 
@@ -94,10 +94,10 @@ func NewProject(config conf.Project) (*Project, error) {
 
 // executions returns a set of executions for modules registered in this
 // project.
-func (c *Project) executions(moduleNames []string, userVars *UserVariables) executionSet {
+func (c *Project) executions(parameters ExecutionParameters) executionSet {
 	results := executionSet{}
-	for _, m := range c.modules(moduleNames) {
-		results = append(results, m.executions(userVars)...)
+	for _, m := range c.modules(parameters.ModuleNames) {
+		results = append(results, m.executions(parameters)...)
 	}
 	return results
 }
@@ -118,11 +118,11 @@ func (c *Project) modules(moduleNames []string) []*module {
 
 // Plan does a Terraform plan for every possible execution, in
 // parallel, ignoring dependencies.
-func (c *Project) Plan(moduleNames []string, userVars *UserVariables, detach bool) (<-chan string, <-chan *Result, error) {
+func (c *Project) Plan(parameters PlanExecutionParameters) (<-chan string, <-chan *Result, error) {
 	logger.Trace.Println("astro: running Plan")
 
 	// Binds user vars
-	boundExecutions, err := c.executions(moduleNames, userVars).bindAll(userVars.Values)
+	boundExecutions, err := c.executions(parameters.ExecutionParameters).bindAll(parameters.UserVars.Values)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -133,18 +133,18 @@ func (c *Project) Plan(moduleNames []string, userVars *UserVariables, detach boo
 		return nil, nil, err
 	}
 
-	return session.plan(boundExecutions, detach)
+	return session.plan(boundExecutions, parameters.Detach)
 }
 
 // Apply does a Terraform apply for every possible execution,
 // in parallel, taking into consideration dependencies. It returns an
 // error if it is unable to start, e.g. due to a missing required
 // variable.
-func (c *Project) Apply(moduleNames []string, userVars *UserVariables) (<-chan string, <-chan *Result, error) {
+func (c *Project) Apply(parameters ApplyExecutionParameters) (<-chan string, <-chan *Result, error) {
 	logger.Trace.Println("astro: running Apply")
 
 	// Bind user vars
-	boundExecutions, err := c.executions(moduleNames, userVars).bindAll(userVars.Values)
+	boundExecutions, err := c.executions(parameters.ExecutionParameters).bindAll(parameters.UserVars.Values)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,7 +156,7 @@ func (c *Project) Apply(moduleNames []string, userVars *UserVariables) (<-chan s
 	}
 
 	var applyFn func([]*boundExecution) (<-chan string, <-chan *Result, error)
-	if moduleNames != nil {
+	if parameters.ModuleNames != nil {
 		applyFn = session.apply
 	} else {
 		applyFn = session.applyWithGraph

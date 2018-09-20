@@ -60,11 +60,15 @@ func TestPlanSuccess(t *testing.T) {
 
 	c.config.TerraformDefaults.Path = absolutePath("fixtures/mock-terraform/success")
 
-	_, resultChan, err := c.Plan(nil, &UserVariables{
-		Values: map[string]string{
-			"aws_region": "east1",
+	_, resultChan, err := c.Plan(PlanExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"aws_region": "east1",
+				},
+			},
 		},
-	}, false)
+	})
 	require.NoError(t, err)
 
 	// there should be no errors
@@ -95,11 +99,16 @@ func TestPlanModulesFiltered(t *testing.T) {
 		"database",
 	}
 
-	_, resultChan, err := c.Plan(modulesToPlan, &UserVariables{
-		Values: map[string]string{
-			"aws_region": "east1",
+	_, resultChan, err := c.Plan(PlanExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			ModuleNames: modulesToPlan,
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"aws_region": "east1",
+				},
+			},
 		},
-	}, false)
+	})
 	require.NoError(t, err)
 
 	// only the two modules above should be in the plan results
@@ -119,15 +128,19 @@ func TestPlanVariablesFiltered(t *testing.T) {
 
 	c.config.TerraformDefaults.Path = absolutePath("fixtures/mock-terraform/success")
 
-	_, resultChan, err := c.Plan(nil, &UserVariables{
-		Values: map[string]string{
-			"aws_region":  "east1",
-			"environment": "dev",
+	_, resultChan, err := c.Plan(PlanExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"aws_region":  "east1",
+					"environment": "dev",
+				},
+				Filters: map[string]bool{
+					"environment": true,
+				},
+			},
 		},
-		Filters: map[string]bool{
-			"environment": true,
-		},
-	}, false)
+	})
 	require.NoError(t, err)
 
 	// only the two modules above should be in the plan results
@@ -144,9 +157,13 @@ func TestApplySuccess(t *testing.T) {
 	c, err := NewProjectFromConfigFile("fixtures/foosite.yaml")
 	require.NoError(t, err)
 
-	_, resultChan, err := c.Apply(nil, &UserVariables{
-		Values: map[string]string{
-			"aws_region": "east1",
+	_, resultChan, err := c.Apply(ApplyExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"aws_region": "east1",
+				},
+			},
 		},
 	})
 	require.NoError(t, err)
@@ -174,9 +191,13 @@ func TestApplyFailModule(t *testing.T) {
 	c, err := NewProjectFromConfigFile("fixtures/test-apply-fail-module/astro.yaml")
 	require.NoError(t, err)
 
-	_, resultChan, err := c.Apply(nil, &UserVariables{
-		Values: map[string]string{
-			"aws_region": "east1",
+	_, resultChan, err := c.Apply(ApplyExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"aws_region": "east1",
+				},
+			},
 		},
 	})
 	require.NoError(t, err)

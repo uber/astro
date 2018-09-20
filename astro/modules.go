@@ -35,14 +35,14 @@ func newModule(config conf.Module) *module {
 
 // Executions returns a list of all possible Executions based
 // on the variable names/values.
-func (m *module) executions(userVars *UserVariables) executionSet {
+func (m *module) executions(parameters ExecutionParameters) executionSet {
 	filterCount := 0
 	for _, variable := range m.config.Variables {
-		if userVars.HasFilter(variable.Name) {
+		if parameters.UserVars.HasFilter(variable.Name) {
 			filterCount++
 		}
 	}
-	if filterCount != userVars.FilterCount() {
+	if filterCount != parameters.UserVars.FilterCount() {
 		return executionSet{}
 	}
 
@@ -52,7 +52,8 @@ func (m *module) executions(userVars *UserVariables) executionSet {
 		return executionSet{
 			&unboundExecution{
 				&execution{
-					moduleConf: m.config,
+					moduleConf:          m.config,
+					terraformParameters: parameters.TerraformParameters,
 				},
 			},
 		}
@@ -62,11 +63,11 @@ func (m *module) executions(userVars *UserVariables) executionSet {
 
 	for _, variable := range m.config.Variables {
 		v := []interface{}{}
-		filtered := variable.IsFilter() && userVars.Values[variable.Name] != ""
+		filtered := variable.IsFilter() && parameters.UserVars.Values[variable.Name] != ""
 
 		if variable.Values != nil {
 			for _, value := range variable.Values {
-				if !filtered || value == userVars.Values[variable.Name] {
+				if !filtered || value == parameters.UserVars.Values[variable.Name] {
 					v = append(v, fmt.Sprintf("%s=%s", variable.Name, value))
 				}
 			}
@@ -86,7 +87,8 @@ func (m *module) executions(userVars *UserVariables) executionSet {
 	for _, p := range products {
 		e := &unboundExecution{
 			&execution{
-				moduleConf: m.config,
+				moduleConf:          m.config,
+				terraformParameters: parameters.TerraformParameters,
 			},
 		}
 

@@ -32,11 +32,12 @@ func (session *Session) newTerraformSession(execution *boundExecution) (*terrafo
 	moduleConfig := execution.ModuleConfig()
 
 	config := terraform.Config{
-		Name:       moduleConfig.Name,
-		BasePath:   moduleConfig.TerraformCodeRoot,
-		ModulePath: moduleConfig.Path,
-		Remote:     moduleConfig.Remote,
-		Variables:  execution.Variables(),
+		Name:                moduleConfig.Name,
+		BasePath:            moduleConfig.TerraformCodeRoot,
+		ModulePath:          moduleConfig.Path,
+		Remote:              moduleConfig.Remote,
+		Variables:           execution.Variables(),
+		TerraformParameters: execution.TerraformParameters(),
 	}
 
 	// Fetch the right Terraform version
