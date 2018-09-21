@@ -61,23 +61,18 @@ Path: mgmt.plan
 
 ~ module.policies.aws_iam_policy.billing
 
-@@ -2,14 +2,13 @@
-   "Version": "2012-10-17",
-   "Statement": [
-     {
-+      "Sid": "",
-       "Effect": "Allow",
-       "Action": [
-         "budgets:*",
+@@ -6,9 +6,8 @@
          "aws-portal:View*"
        ],
+       "Effect": "Allow",
 -      "Resource": [
 -        "*"
 -      ]
-+      "Resource": "*"
++      "Resource": "*",
++      "Sid": ""
      }
-   ]
- }
+   ],
+   "Version": "2012-10-17"
 
 
 Plan: 0 to add, 1 to change, 0 to destroy.
@@ -121,22 +116,51 @@ Path: mgmt.plan
 
 @@ -0,0 +1,14 @@
 +{
-+  "Version": "2012-10-17",
 +  "Statement": [
 +    {
-+      "Sid": "",
-+      "Effect": "Allow",
 +      "Action": [
 +        "budgets:*",
 +        "aws-portal:View*"
 +      ],
-+      "Resource": "*"
++      "Effect": "Allow",
++      "Resource": "*",
++      "Sid": ""
 +    }
-+  ]
++  ],
++  "Version": "2012-10-17"
 +}
 
 
 Plan: 0 to add, 1 to change, 0 to destroy.
+`
+
+	diffedPolicy, err := readableTerraformPolicyChangesWithDiffer(testDifferPath, inputText)
+
+	assert.NoError(t, err)
+	assert.Equal(t, strings.TrimSpace(expectedOutput), strings.TrimSpace(diffedPolicy))
+}
+
+func TestJSONNormalization(t *testing.T) {
+	if testDifferPath == "" {
+		t.Skip("skipping test since there is no diff program")
+	}
+
+	inputText := `
+~ module.policies.aws_iam_policy.billing
+policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n     ],\n \"Sid\": \"a\",\n     \"Resource\": \"*\"\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"b\",\n      \"Resource\": \"*\"\n    ,\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ]}\n  ]\n}"
+`
+	expectedOutput := `
+~ module.policies.aws_iam_policy.billing
+
+@@ -7,7 +7,7 @@
+       ],
+       "Effect": "Allow",
+       "Resource": "*",
+-      "Sid": "a"
++      "Sid": "b"
+     }
+   ],
+   "Version": "2012-10-17"
 `
 
 	diffedPolicy, err := readableTerraformPolicyChangesWithDiffer(testDifferPath, inputText)

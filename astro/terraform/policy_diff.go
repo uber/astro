@@ -103,12 +103,16 @@ func jsonPretty(in []byte) ([]byte, error) {
 	if len(in) == 0 {
 		return in, nil
 	}
-	var out bytes.Buffer
-	err := json.Indent(&out, in, "", "  ")
+	var unmarshalled interface{}
+	err := json.Unmarshal(in, &unmarshalled)
 	if err != nil {
 		return nil, err
 	}
-	return out.Bytes(), nil
+	out, err := json.MarshalIndent(unmarshalled, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // CanDisplayReadableTerraformPolicyChanges is true when the prerequisites for
