@@ -32,7 +32,7 @@ import (
 
 // printExecStatus takes channels for status updates and exec results
 // and prints them on screen as they arrive.
-func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors error) {
+func printExecStatus(status <-chan string, results <-chan *astro.Result, disablePolicyDiff bool) (errors error) {
 	// Print status updates to stdout as they arrive
 	if status != nil {
 		go func() {
@@ -97,7 +97,7 @@ func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors
 		// If this was a plan, print the plan
 		if planResult != nil && planResult.HasChanges() {
 			planOutput := planResult.Changes()
-			if terraform.CanDisplayReadableTerraformPolicyChanges() {
+			if !disablePolicyDiff && terraform.CanDisplayReadableTerraformPolicyChanges() {
 				var err error
 				planOutput, err = terraform.ReadableTerraformPolicyChanges(planOutput)
 				if err != nil {
