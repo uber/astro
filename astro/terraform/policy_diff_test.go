@@ -46,7 +46,7 @@ plan.
 Path: mgmt.plan
 
 ~ module.policies.aws_iam_policy.billing
-policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": [\n        \"*\"\n      ]\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}"
+  policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": [\n        \"*\"\n      ]\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}"
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 `
@@ -60,7 +60,7 @@ plan.
 Path: mgmt.plan
 
 ~ module.policies.aws_iam_policy.billing
-
+  policy: 
 @@ -6,9 +6,8 @@
          "aws-portal:View*"
        ],
@@ -99,7 +99,7 @@ plan.
 Path: mgmt.plan
 
 ~ module.policies.aws_iam_policy.billing
-policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}"
+  policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}"
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 `
@@ -113,7 +113,7 @@ plan.
 Path: mgmt.plan
 
 ~ module.policies.aws_iam_policy.billing
-
+  policy: 
 @@ -0,0 +1,14 @@
 +{
 +  "Statement": [
@@ -147,11 +147,11 @@ func TestJSONNormalization(t *testing.T) {
 
 	inputText := `
 ~ module.policies.aws_iam_policy.billing
-policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n     ],\n \"Sid\": \"a\",\n     \"Resource\": \"*\"\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"b\",\n      \"Resource\": \"*\"\n    ,\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ]}\n  ]\n}"
+  policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n     ],\n \"Sid\": \"a\",\n     \"Resource\": \"*\"\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"b\",\n      \"Resource\": \"*\"\n    ,\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n      ]}\n  ]\n}"
 `
 	expectedOutput := `
 ~ module.policies.aws_iam_policy.billing
-
+  policy: 
 @@ -7,7 +7,7 @@
        ],
        "Effect": "Allow",
@@ -161,6 +161,26 @@ policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"E
      }
    ],
    "Version": "2012-10-17"
+`
+
+	diffedPolicy, err := readableTerraformPolicyChangesWithDiffer(testDifferPath, inputText)
+
+	assert.NoError(t, err)
+	assert.Equal(t, strings.TrimSpace(expectedOutput), strings.TrimSpace(diffedPolicy))
+}
+
+func TestEmptyDiff(t *testing.T) {
+	if testDifferPath == "" {
+		t.Skip("skipping test since there is no diff program")
+	}
+
+	inputText := `
+~ module.policies.aws_iam_policy.billing
+  policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n     ],\n \"Sid\": \"a\",\n     \"Resource\": \"*\"\n    }\n  ]\n}" => "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"budgets:*\",\n        \"aws-portal:View*\"\n     ],\n \"Sid\": \"a\",\n     \"Resource\": \"*\"\n    }\n  ]\n}"
+`
+	expectedOutput := `
+~ module.policies.aws_iam_policy.billing
+  policy: <no changes after normalization>
 `
 
 	diffedPolicy, err := readableTerraformPolicyChangesWithDiffer(testDifferPath, inputText)
