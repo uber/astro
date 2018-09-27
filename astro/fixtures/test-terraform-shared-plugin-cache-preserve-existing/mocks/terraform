@@ -1,0 +1,17 @@
+#!/bin/bash
+if [ "$1" == "version" ]; then
+    cat <<EOF
+Terraform v0.11.7
+EOF
+    exit 0
+fi
+
+env |grep TF_PLUGIN_CACHE_DIR >&2
+
+if [[ "$TF_PLUGIN_CACHE_DIR" != "foobar" ]]; then
+    echo FAIL
+    exit 1
+else
+    echo SUCCESS
+    exit 0
+fi

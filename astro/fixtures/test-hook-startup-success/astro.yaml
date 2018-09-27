@@ -1,0 +1,14 @@
+---
+
+hooks:
+  startup:
+    - command: ../mock-hooks/success
+      set_env: true
+
+modules:
+  # test
+  - name: test
+    path: .
+
+terraform:
+  version: 0.0.0

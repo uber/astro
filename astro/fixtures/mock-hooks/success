@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "Testing hook call: " "$@" | tee mock-hook.log >&2
+echo SUCCESS | tee mock-hook.log
+exit 0

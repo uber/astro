@@ -1,0 +1,18 @@
+---
+
+session_repo_dir:
+terraform_code_root: ./terraform
+
+modules:
+
+  - name: foo
+    path: foo
+
+  - name: bar
+    path: bar
+
+  - name: baz
+    path: baz
+
+terraform:
+  version: 0.0.0

@@ -1,0 +1,78 @@
+---
+
+terraform:
+  path: ../mock-terraform/success
+
+modules:
+
+  - name: app
+    path: .
+    deps:
+      - module: network
+        variables:
+          environment: "{{.environment}}"
+      - module: database
+        variables:
+          environment: "{{.environment}}"
+    remote:
+      backend: s3
+      backend_config:
+        bucket: mybucket
+        key: "{{.aws_region}}/app/{{.environment}}.tfstate"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [dev, staging, prod]
+
+  - name: database
+    path: .
+    deps:
+      - module: users
+    remote:
+      backend: s3
+      backend_config:
+        bucket: mybucket
+        key: "{{.aws_region}}/database/{{.environment}}.tfstate"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [dev, staging, prod]
+
+  - name: network
+    path: .
+    remote:
+      backend: s3
+      backend_config:
+        bucket: mybucket
+        key: "{{.aws_region}}/network/{{.environment}}.tfstate"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [mgmt, dev, staging, prod]
+
+  - name: mgmt
+    path: .
+    deps:
+      - module: network
+        variables:
+          environment: mgmt
+    remote:
+      backend: s3
+      backend_config:
+        bucket: mybucket
+        key: "{{.aws_region}}/mgmt/mgmt.tfstate"
+        region: us-east-1
+    variables:
+      - name: aws_region
+
+  - name: users
+    path: .
+    remote:
+      backend: s3
+      backend_config:
+        bucket: mybucket
+        key: users
+        region: us-east-1
