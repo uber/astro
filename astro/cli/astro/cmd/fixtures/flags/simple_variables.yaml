@@ -1,0 +1,11 @@
+---
+
+modules:
+  - name: foo
+    path: .
+    variables:
+      - name: no_flag
+      - name: with_flag
+        flag: flag_name
+      - name: with_values
+        values: [dev, staging, prod]

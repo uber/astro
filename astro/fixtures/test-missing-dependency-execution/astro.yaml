@@ -1,0 +1,19 @@
+---
+
+modules:
+
+  - name: app
+    path: .
+    deps:
+      - module: vpc
+        variables:
+          environment: prod
+
+  - name: vpc
+    path: .
+    variables:
+      - name: environment
+        values: ["dev", "staging"]
+
+terraform:
+  version: 0.0.0

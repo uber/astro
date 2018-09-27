@@ -1,0 +1,10 @@
+*.cov
+*.out
+*.test
+*.xml
+.astro
+.coverage.out
+.tmp/
+/astro/graph.png
+/bin
+/vendor

@@ -1,0 +1,14 @@
+---
+
+hooks:
+  startup:
+    - command: mocks/hook-inject
+      set_env: true
+
+modules:
+  # test
+  - name: test
+    path: .
+
+terraform:
+  path: mocks/terraform-test-injected-var

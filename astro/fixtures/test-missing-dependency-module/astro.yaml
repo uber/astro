@@ -1,0 +1,11 @@
+---
+
+modules:
+
+  - name: app
+    path: .
+    deps:
+      - module: foo
+
+terraform:
+  version: 0.0.0

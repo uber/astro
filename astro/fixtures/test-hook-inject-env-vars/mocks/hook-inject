@@ -1,0 +1,5 @@
+#!/bin/bash
+:>mock-hook.log
+echo "FOO=bar" | tee -a mock-hook.log
+echo "first junk line" | tee -a mock-hook.log
+exit 0

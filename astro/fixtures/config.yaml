@@ -1,0 +1,246 @@
+---
+
+terraform:
+  version: 0.0.0
+
+variables:
+  env: environment
+  region: aws_region
+
+module_defaults:
+  assume_role: terraform
+  remote:
+    backend: s3
+    backend_config:
+      bucket: terraform-s3-state
+      region: us-east-1
+
+modules:
+  # codecommit
+  - name: codecommit
+    path: core/codecommit
+    assume_role: terraform
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: us-east-1/codecommit
+        region: us-east-1
+
+  # dynamodb
+  - name: dynamodb
+    path: core/dynamodb
+    assume_role: terraform
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-dynamodb-{{.environment}}"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [dev, staging, prod]
+
+  # global
+  - name: global
+    path: core/global
+    assume_role: terraform
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: global
+        region: us-east-1
+
+  # s3
+  - name: s3
+    path: core/s3
+    assume_role: terraform
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-s3"
+        region: us-east-1
+    variables:
+      - name: aws_region
+
+  # security-ingestion
+  - name: security-ingestion
+    path: core/security-ingestion
+    assume_role: terraform
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: security-ingestion/security-ingestion_global
+        region: us-east-1
+
+  # security-monitoring
+  - name: security-monitoring
+    path: core/security-monitoring
+    assume_role: security
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "security-monitoring/security-monitoring_{{.aws_region}}"
+        region: us-east-1
+
+  # hailstorm/mgmt
+  - name: mgmt
+    path: core/mgmt
+    assume_role: terraform
+    deps:
+      - module: mgmt-vpc
+        variables:
+          environment: mgmt
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-hailstorm-{{.environment}}"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [mgmt]
+
+  # hailstorm/dev
+  - name: dev
+    path: core/dev
+    assume_role: terraform
+    deps:
+      - module: mgmt
+        variables:
+          environment: mgmt
+      - module: vpc
+        variables:
+          environment: dev
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-hailstorm-dev"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [dev]
+
+  # hailstorm/prod
+  - name: prod
+    path: core/prod
+    assume_role: terraform
+    deps:
+      - module: mgmt
+        variables:
+          environment: mgmt
+      - module: vpc
+        variables:
+          environment: prod
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-hailstorm-prod"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [prod]
+
+  # hailstorm/staging
+  - name: staging
+    path: core/staging
+    assume_role: terraform
+    deps:
+      - module: mgmt
+        variables:
+          environment: mgmt
+      - module: vpc
+        variables:
+          environment: staging
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-hailstorm-staging"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [staging]
+
+  # vpc/mgmt
+  - name: mgmt-vpc
+    path: core/mgmt-vpc
+    assume_role: terraform
+    deps:
+      - module: global
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-vpc-{{.environment}}"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [mgmt]
+
+  # vpc/dev/staging/prod
+  - name: vpc
+    path: core/vpc
+    assume_role: terraform
+    deps:
+      - module: global
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-vpc-{{.environment}}"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [dev, staging, prod]
+
+  # vpc-peering
+  - name: vpc-peering
+    path: core/vpc-peering
+    assume_role: terraform
+    deps:
+      - module: mgmt
+      - module: dev
+      - module: staging
+      - module: prod
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "{{.aws_region}}/env-vpc-peering-{{.environment}}"
+        region: us-east-1
+    variables:
+      - name: aws_region
+      - name: environment
+        values: [mgmt, dev, staging, prod]
+
+  # vpns
+  - name: vpns
+    path: core/vpns
+    assume_role: terraform
+    deps:
+      - module: mgmt
+      - module: dev
+      - module: staging
+      - module: prod
+    remote:
+      backend: s3
+      backend_config:
+        bucket: terraform-s3-state
+        key: "vpns/vpns_{{.aws_region}}"
+        region: us-east-1
+    variables:
+      - name: aws_region

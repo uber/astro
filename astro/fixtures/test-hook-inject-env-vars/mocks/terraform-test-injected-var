@@ -1,0 +1,19 @@
+#!/bin/bash -x
+declare -a args=("$@")
+
+action="${args[0]}"
+
+case "$action" in
+    version)
+        cat <<EOF
+Terraform v0.8.8
+EOF
+        exit 0
+        ;;
+    *)
+        if [ "$FOO" != "bar" ]; then
+            echo "ERROR: Expected \$FOO to be set to "bar" but it was: $FOO" >&2
+            exit 1
+        fi
+        ;;
+esac

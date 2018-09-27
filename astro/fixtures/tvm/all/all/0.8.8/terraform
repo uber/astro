@@ -1,0 +1,14 @@
+#!/bin/bash -x
+echo "Testing Terraform call:" "$@" >&2
+
+if [[ $# -eq 1 && "$1" == "version" ]]; then
+    cat <<EOF
+Terraform v0.8.8
+
+Your version of Terraform is out of date! The latest version
+is 0.11.3. You can update by downloading from www.terraform.io
+EOF
+    exit 0
+fi
+
+exit 1

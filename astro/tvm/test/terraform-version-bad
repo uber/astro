@@ -1,0 +1,6 @@
+#!/bin/sh
+cat <<EOF
+Some
+kind
+of junk
+EOF

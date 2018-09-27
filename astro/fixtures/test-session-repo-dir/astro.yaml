@@ -1,0 +1,17 @@
+---
+
+session_repo_dir:
+
+modules:
+
+  - name: foo
+    path: .
+
+  - name: bar
+    path: .
+
+  - name: baz
+    path: .
+
+terraform:
+  version: 0.0.0

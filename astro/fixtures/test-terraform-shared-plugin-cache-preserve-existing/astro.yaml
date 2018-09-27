@@ -1,0 +1,8 @@
+---
+
+terraform:
+  path: mocks/terraform
+
+modules:
+  - name: test
+    path: .
