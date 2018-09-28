@@ -96,7 +96,15 @@ func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors
 
 		// If this was a plan, print the plan
 		if planResult != nil && planResult.HasChanges() {
-			fmt.Fprintf(out, "\n%s", planResult.Changes())
+			planOutput := planResult.Changes()
+			if terraform.CanDisplayReadableTerraformPolicyChanges() {
+				var err error
+				planOutput, err = terraform.ReadableTerraformPolicyChanges(planOutput)
+				if err != nil {
+					fmt.Fprintf(out, "\n%s", err)
+				}
+			}
+			fmt.Fprintf(out, "\n%s", planOutput)
 		}
 
 		// If there is a stderr, print it
