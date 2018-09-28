@@ -56,7 +56,7 @@ func TestHookInjectEnvVars(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, c)
 
-	_, resultChan, err := c.Plan(nil, NoUserVariables(), false)
+	_, resultChan, err := c.Plan(NoPlanExecutionParameters())
 	assert.NoError(t, err)
 
 	// there should be no errors

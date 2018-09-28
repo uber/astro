@@ -16,23 +16,31 @@
 
 package astro
 
-import (
-	"testing"
+type ExecutionParameters struct {
+	ModuleNames         []string
+	UserVars            *UserVariables
+	TerraformParameters []string
+}
 
-	"github.com/stretchr/testify/require"
-)
+type PlanExecutionParameters struct {
+	ExecutionParameters
+	Detach bool
+}
 
-func TestGraph(t *testing.T) {
-	t.Parallel()
+type ApplyExecutionParameters struct {
+	ExecutionParameters
+}
 
-	c, err := NewProjectFromConfigFile("fixtures/test-graph/astro.yaml")
-	require.NoError(t, err)
+func NoExecutionParameters() ExecutionParameters {
+	return ExecutionParameters{
+		UserVars: NoUserVariables(),
+	}
+}
 
-	graph, err := c.executions(NoExecutionParameters()).graph()
-	require.NoError(t, err)
-	require.NoError(t, graph.Validate())
-	graph.TransitiveReduction()
-
-	_, err = graph.Root()
-	require.NoError(t, err)
+func NoPlanExecutionParameters() PlanExecutionParameters {
+	return PlanExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: NoUserVariables(),
+		},
+	}
 }

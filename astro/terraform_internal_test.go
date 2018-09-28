@@ -39,7 +39,7 @@ func TestProjectUsesDefaultTerraformVersion(t *testing.T) {
 	// Install test/mock
 	c.terraformVersions = testVersionRepo
 
-	executions := c.executions(nil, NoUserVariables())
+	executions := c.executions(NoExecutionParameters())
 	require.NotEmpty(t, executions)
 
 	// Take a single execution and bind it
@@ -75,7 +75,7 @@ func TestProjectUsesDefaultTerraformPath(t *testing.T) {
 	// Install test/mock
 	c.terraformVersions = testVersionRepo
 
-	executions := c.executions(nil, NoUserVariables())
+	executions := c.executions(NoExecutionParameters())
 	require.NotEmpty(t, executions)
 
 	// Take a single execution and bind it
@@ -110,7 +110,7 @@ func TestSharedPluginCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// do a plan
-	_, resultChan, err := c.Plan(nil, NoUserVariables(), false)
+	_, resultChan, err := c.Plan(NoPlanExecutionParameters())
 	require.NoError(t, err)
 
 	// assert no errors
@@ -131,7 +131,7 @@ func TestSharedPluginCachePreservesExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// do a plan
-	_, resultChan, err := c.Plan(nil, NoUserVariables(), false)
+	_, resultChan, err := c.Plan(NoPlanExecutionParameters())
 	require.NoError(t, err)
 
 	// assert no errors

@@ -19,8 +19,8 @@ package terraform
 import (
 	"errors"
 
-	"github.com/uber/astro/astro/conf"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/uber/astro/astro/conf"
 )
 
 // Config is the Terraform configuration required to initialize and run
@@ -36,6 +36,8 @@ type Config struct {
 	Remote conf.Remote
 	// Variables is a map of the variable values for execution.
 	Variables map[string]string
+	// TerraformParameters is a list of additional Terraform command-line parameters
+	TerraformParameters []string
 
 	// TerraformPath is the path to the Terraform binary
 	TerraformPath string

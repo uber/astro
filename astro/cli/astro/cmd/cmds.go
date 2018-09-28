@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/uber/astro/astro"
 	"github.com/spf13/cobra"
+	"github.com/uber/astro/astro"
 )
 
 var (
@@ -31,8 +31,9 @@ var (
 )
 
 var applyCmd = &cobra.Command{
-	Use:   "apply",
-	Short: "Run Terraform apply on all modules",
+	Use:                   "apply [flags] [-- [Terraform argument]...]",
+	DisableFlagsInUseLine: true,
+	Short:                 "Run Terraform apply on all modules",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c, err := currentProject()
 		if err != nil {
@@ -46,7 +47,15 @@ var applyCmd = &cobra.Command{
 			moduleNames = strings.Split(moduleNamesString, ",")
 		}
 
-		status, results, err := c.Apply(moduleNames, vars)
+		status, results, err := c.Apply(
+			astro.ApplyExecutionParameters{
+				ExecutionParameters: astro.ExecutionParameters{
+					ModuleNames:         moduleNames,
+					UserVars:            vars,
+					TerraformParameters: args,
+				},
+			},
+		)
 		if err != nil {
 			return fmt.Errorf("error running Terraform: %v", err)
 		}
@@ -63,8 +72,9 @@ var applyCmd = &cobra.Command{
 }
 
 var planCmd = &cobra.Command{
-	Use:   "plan",
-	Short: "Generate execution plans for modules",
+	Use:                   "plan [flags] [-- [Terraform argument]...]",
+	DisableFlagsInUseLine: true,
+	Short:                 "Generate execution plans for modules",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c, err := currentProject()
 		if err != nil {
@@ -78,7 +88,16 @@ var planCmd = &cobra.Command{
 			moduleNames = strings.Split(moduleNamesString, ",")
 		}
 
-		status, results, err := c.Plan(moduleNames, vars, detach)
+		status, results, err := c.Plan(
+			astro.PlanExecutionParameters{
+				ExecutionParameters: astro.ExecutionParameters{
+					ModuleNames:         moduleNames,
+					UserVars:            vars,
+					TerraformParameters: args,
+				},
+				Detach: detach,
+			},
+		)
 		if err != nil {
 			return fmt.Errorf("error running Terraform: %v", err)
 		}
