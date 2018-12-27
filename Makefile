@@ -50,6 +50,10 @@ lint:
 		exit 1; \
 	fi;
 
+.PHONY: release
+release: vendor
+	goreleaser release --rm-dist
+
 .PHONY: test
 test:
 	go test -timeout 1m -coverprofile=.coverage.out ./... \
