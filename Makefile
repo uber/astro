@@ -55,4 +55,4 @@ test: vendor
 
 .PHONY: vendor
 vendor:
-	dep ensure
+	go mod download
