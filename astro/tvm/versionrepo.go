@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -98,28 +99,40 @@ func (r *VersionRepo) download(version string) (string, error) {
 
 	url := fmt.Sprintf(terraformZipFileDownloadURL, version, version, r.platform, r.arch)
 
-	// Temporary file for zip file
-	tmpfile, err := ioutil.TempFile("", "terraform")
+	// Temporary directory for downloading Terraform and extracting the zip file
+	tmpDir, err := ioutil.TempDir("", "terraform")
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile.Name())
+	defer os.RemoveAll(tmpDir)
 
-	// Download zip file
-	if err := downloadFile(url, tmpfile.Name()); err != nil {
+	zipFilePath := path.Join(tmpDir, "terraform.zip")
+
+	// Download Terraform zip file
+	if err := downloadFile(url, zipFilePath); err != nil {
 		return "", err
+	}
+
+	// Extract contents of zip file
+	if err := unzip(zipFilePath, tmpDir); err != nil {
+		return "", err
+	}
+
+	terraformBinaryPath := path.Join(tmpDir, "terraform")
+
+	// Check the binary is there
+	if !utils.FileExists(terraformBinaryPath) {
+		return "", errors.New("Terraform binary missing from zip file")
 	}
 
 	targetDir := r.dir(version)
 
-	// Extract contents of zip file to repo path
-	if err := unzip(tmpfile.Name(), targetDir); err != nil {
-		return "", err
-	}
+	// Make repo dir
+	os.MkdirAll(targetDir, os.ModePerm)
 
-	// Check the binary is there
-	if !r.exists(version) {
-		return "", errors.New("Terraform binary missing from zip file")
+	// Move binary to repo path
+	if err := os.Rename(terraformBinaryPath, path.Join(targetDir, "terraform")); err != nil {
+		return "", err
 	}
 
 	return r.terraformPath(version), nil
