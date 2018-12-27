@@ -7,4 +7,5 @@
 .tmp/
 /astro/graph.png
 /bin
+/dist
 /vendor

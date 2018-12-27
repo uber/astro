@@ -2,6 +2,7 @@
 
 ## 0.5.0 (UNRELEASED, 2018)
 
+* Add binaries via goreleaser
 * Adopt options pattern for `astro.NewProject` constructor (#26)
 * Refactor and improve integration tests to invoke them directly using cli
   rather than `os.exec` (#26)
@@ -33,6 +34,7 @@
 
   `astro.NewProject(conf)` should be changed to:
   `astro.NewProject(astro.WithConfig(conf))`
+=======
 
 ## 0.4.1 (October 3, 2018)
 
