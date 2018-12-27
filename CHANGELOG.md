@@ -1,7 +1,13 @@
 # astro changelog
 
-## 0.5.0 (UNRELEASED, 2018)
+## 0.5.0 (UNRELEASED, 2019)
 
+* Add `version` command
+* Propagate SIGINT and SIGTERM to terraform processes (#49)
+* Support detach flag with terraform 0.12 (#45)
+* Fix plan output for terraform 0.12 (#41)
+* Fix bug in initialization of allowed values (#43)
+* Don't pass varialbes to modules that don't delcare them (#40)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
 * Refactor and improve integration tests to invoke them directly using cli
   rather than `os.exec` (#26)
@@ -33,6 +39,7 @@
 
   `astro.NewProject(conf)` should be changed to:
   `astro.NewProject(astro.WithConfig(conf))`
+
 
 ## 0.4.1 (October 3, 2018)
 
