@@ -1,0 +1,12 @@
+language: go
+before_install:
+- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+cache:
+- vendor
+go:
+ - "1.11.x"
+install:
+- make vendor
+script:
+- make lint
+- make test

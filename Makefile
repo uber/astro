@@ -1,5 +1,23 @@
+export GO111MODULE=on
+
+define PRE_COMMIT_HOOK
+#!/bin/sh -xe
+make lint
+endef
+
+install_hook := $(shell \
+    if [ -z "$$INSTALL_HOOK" ]; then \
+        INSTALL_HOOK=1 make .git/hooks/pre-commit; \
+    fi; \
+)
+
 .PHONY: all
 all: bin/astro bin/tvm
+
+export PRE_COMMIT_HOOK
+.git/hooks/pre-commit: Makefile
+	echo "$$PRE_COMMIT_HOOK" >.git/hooks/pre-commit
+	chmod +x .git/hooks/pre-commit
 
 bin:
 	mkdir -p bin
@@ -19,6 +37,13 @@ clean:
 install:
 	go install github.com/uber/astro/astro/cli/astro
 	go install github.com/uber/astro/astro/tvm/cli/tvm
+
+.PHONY: lint
+lint:
+	@f="$$(find . -name '*.go' ! -path './vendor/*' | xargs grep -L 'Licensed under the Apache License')" || { \
+		echo "ERROR: Files missing license header:"$$'\n'"$$f" >&2; \
+		exit 1; \
+	};
 
 .PHONY: test
 test: vendor
