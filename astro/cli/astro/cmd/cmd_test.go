@@ -184,6 +184,12 @@ func getSessionDirs(sessionBaseDir string) ([]string, error) {
 	return sessionDirs, nil
 }
 
+func TestHelpWorks(t *testing.T) {
+	result := runTest(t, []string{"--help"}, "", terraformVersionsToTest[len(terraformVersionsToTest)-1])
+	assert.Contains(t, "A tool for managing multiple Terraform modules", result.Stdout.String())
+	assert.NoError(t, result.Err)
+}
+
 func TestProjectApplyChangesSuccess(t *testing.T) {
 	for _, version := range terraformVersionsToTest {
 		t.Run(version, func(t *testing.T) {

@@ -55,9 +55,9 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
-	if err := initUserFlagsFromConfig(); err != nil {
-		return err
-	}
+	// Best effort to parse flags from config files for now. TODO: we need to
+	// deal with errors here.
+	initUserFlagsFromConfig()
 	return rootCmd.Execute()
 }
 
