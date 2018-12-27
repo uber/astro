@@ -7,6 +7,7 @@
 * Fix issue with `make test` always returning true even when tests fail
 * Fix race condition that could cause failures due to astro downloading the
   same version of Terraform twice
+* Remove godep and move to Go modules (vgo)
 
 ## 0.4.1 (October 3, 2018)
 
