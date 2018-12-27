@@ -1,3 +1,5 @@
+SHELL = /bin/bash -o pipefail
+
 export GO111MODULE=on
 
 define PRE_COMMIT_HOOK
