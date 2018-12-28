@@ -1,3 +1,13 @@
+# astro changelog
+
+## 0.4.2 (UNRELEASED, 2018)
+
+* Add Travis configuration, `make lint` and git precommit hook
+* Fix issue with make not recompiling when source files changed
+* Fix issue with `make test` always returning true even when tests fail
+* Fix race condition that could cause failures due to astro downloading the
+  same version of Terraform twice
+
 ## 0.4.1 (October 3, 2018)
 
 * Output policy changes in unified diff format (#2)

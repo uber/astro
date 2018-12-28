@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -46,7 +47,13 @@ type VersionRepo struct {
 	arch     string
 	platform string
 
-	downloadLock *sync.Map
+	// locks is a map of mutexes. There is one mutex created on demand for
+	// every Terraform version requested from tvm. The mutex prevents tvm from
+	// downloading the same version of Terraform multiple times. If multiple
+	// threads request the same version of Terraform, only one of them will
+	// trigger the download and the rest will block until the download is
+	// complete.
+	locks *sync.Map
 }
 
 // NewVersionRepo creates a new VersionRepo. The arch will
@@ -61,16 +68,16 @@ func NewVersionRepo(repoPath string, arch string, platform string) (*VersionRepo
 		repoPath = filepath.Join(home, ".tvm")
 	}
 
-	if !utils.FileExists(repoPath) {
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return nil, err
-		}
+	// Create directory if it doesn't exist
+	if err := os.Mkdir(repoPath, 0755); err != nil && !os.IsExist(err) {
+		return nil, err
 	}
+
 	return &VersionRepo{
-		downloadLock: &sync.Map{},
-		repoPath:     repoPath,
-		arch:         arch,
-		platform:     platform,
+		locks:    &sync.Map{},
+		repoPath: repoPath,
+		arch:     arch,
+		platform: platform,
 	}, nil
 }
 
@@ -91,35 +98,44 @@ func (r *VersionRepo) dir(version string) string {
 // returns the path to the downloaded file or an error if there was a
 // problem.
 func (r *VersionRepo) download(version string) (string, error) {
-	downloadLock := r.getLock(version)
-
-	downloadLock.Lock()
-	defer downloadLock.Unlock()
-
 	url := fmt.Sprintf(terraformZipFileDownloadURL, version, version, r.platform, r.arch)
 
-	// Temporary file for zip file
-	tmpfile, err := ioutil.TempFile("", "terraform")
+	// Temporary directory for downloading Terraform and extracting the zip file
+	tmpDir, err := ioutil.TempDir("", "terraform")
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile.Name())
+	defer os.RemoveAll(tmpDir)
 
-	// Download zip file
-	if err := downloadFile(url, tmpfile.Name()); err != nil {
+	zipFilePath := path.Join(tmpDir, "terraform.zip")
+
+	// Download Terraform zip file
+	if err := downloadFile(url, zipFilePath); err != nil {
 		return "", err
+	}
+
+	// Extract contents of zip file
+	if err := unzip(zipFilePath, tmpDir); err != nil {
+		return "", err
+	}
+
+	terraformBinaryPath := path.Join(tmpDir, "terraform")
+
+	// Check the binary is there
+	if !utils.FileExists(terraformBinaryPath) {
+		return "", errors.New("Terraform binary missing from zip file")
 	}
 
 	targetDir := r.dir(version)
 
-	// Extract contents of zip file to repo path
-	if err := unzip(tmpfile.Name(), targetDir); err != nil {
+	// Make repo dir
+	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return "", err
 	}
 
-	// Check the binary is there
-	if !r.exists(version) {
-		return "", errors.New("Terraform binary missing from zip file")
+	// Move binary to repo path
+	if err := os.Rename(terraformBinaryPath, path.Join(targetDir, "terraform")); err != nil {
+		return "", err
 	}
 
 	return r.terraformPath(version), nil
@@ -131,8 +147,11 @@ func (r *VersionRepo) exists(version string) bool {
 	return utils.FileExists(r.terraformPath(version))
 }
 
+// getLock returns a mutex for the specified Terraform version which is used to
+// prevent multiple threads from downloading the same version of Terraform at
+// the same time.
 func (r *VersionRepo) getLock(version string) *sync.Mutex {
-	v, _ := r.downloadLock.LoadOrStore(version, &sync.Mutex{})
+	v, _ := r.locks.LoadOrStore(version, &sync.Mutex{})
 	return v.(*sync.Mutex)
 }
 
@@ -140,6 +159,13 @@ func (r *VersionRepo) getLock(version string) *sync.Mutex {
 // that version. If the binary doesn't exist, it will be downloaded from
 // the Terraform website automatically.
 func (r *VersionRepo) Get(version string) (string, error) {
+	lock := r.getLock(version)
+
+	// Lock() here will block and wait if another thread is currently
+	// downloading Terraform.
+	lock.Lock()
+	defer lock.Unlock()
+
 	path := r.terraformPath(version)
 	if !utils.FileExists(path) {
 		return r.download(version)

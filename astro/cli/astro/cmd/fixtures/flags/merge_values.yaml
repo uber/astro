@@ -1,5 +1,8 @@
 ---
 
+terraform:
+  version: 0.11.7
+
 modules:
   - name: foo_mgmt
     path: .

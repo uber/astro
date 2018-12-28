@@ -90,7 +90,10 @@ func TestMain(m *testing.M) {
 	// Download Terraform versions first so that multiple tests don't
 	// try to do it in parallel.
 	for _, version := range terraformVersionsToTest {
-		terraformVersionRepo.Get(version)
+		if _, err := terraformVersionRepo.Get(version); err != nil {
+			fmt.Fprint(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	os.Exit(m.Run())
