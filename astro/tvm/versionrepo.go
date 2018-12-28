@@ -47,7 +47,13 @@ type VersionRepo struct {
 	arch     string
 	platform string
 
-	lock *sync.Map
+	// locks is a map of mutexes. There is one mutex created on demand for
+	// every Terraform version requested from tvm. The mutex prevents tvm from
+	// downloading the same version of Terraform multiple times. If multiple
+	// threads request the same version of Terraform, only one of them will
+	// trigger the download and the rest will block until the download is
+	// complete.
+	locks *sync.Map
 }
 
 // NewVersionRepo creates a new VersionRepo. The arch will
@@ -68,7 +74,7 @@ func NewVersionRepo(repoPath string, arch string, platform string) (*VersionRepo
 	}
 
 	return &VersionRepo{
-		lock:     &sync.Map{},
+		locks:    &sync.Map{},
 		repoPath: repoPath,
 		arch:     arch,
 		platform: platform,
@@ -141,8 +147,11 @@ func (r *VersionRepo) exists(version string) bool {
 	return utils.FileExists(r.terraformPath(version))
 }
 
+// getLock returns a mutex for the specified Terraform version which is used to
+// prevent multiple threads from downloading the same version of Terraform at
+// the same time.
 func (r *VersionRepo) getLock(version string) *sync.Mutex {
-	v, _ := r.lock.LoadOrStore(version, &sync.Mutex{})
+	v, _ := r.locks.LoadOrStore(version, &sync.Mutex{})
 	return v.(*sync.Mutex)
 }
 
@@ -152,6 +161,8 @@ func (r *VersionRepo) getLock(version string) *sync.Mutex {
 func (r *VersionRepo) Get(version string) (string, error) {
 	lock := r.getLock(version)
 
+	// Lock() here will block if another thread is currently downloading
+	// Terraform.
 	lock.Lock()
 	defer lock.Unlock()
 
