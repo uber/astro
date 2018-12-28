@@ -53,5 +53,6 @@ test: vendor
 	go test -timeout 1m -coverprofile=.coverage.out ./... \
 		|grep -v -E '^\?'
 
+.PHONY: vendor
 vendor:
 	dep ensure
