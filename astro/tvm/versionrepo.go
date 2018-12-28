@@ -47,7 +47,7 @@ type VersionRepo struct {
 	arch     string
 	platform string
 
-	downloadLock *sync.Map
+	lock *sync.Map
 }
 
 // NewVersionRepo creates a new VersionRepo. The arch will
@@ -62,16 +62,16 @@ func NewVersionRepo(repoPath string, arch string, platform string) (*VersionRepo
 		repoPath = filepath.Join(home, ".tvm")
 	}
 
-	if !utils.FileExists(repoPath) {
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return nil, err
-		}
+	// Create directory if it doesn't exist
+	if err := os.Mkdir(repoPath, 0755); err != nil && !os.IsExist(err) {
+		return nil, err
 	}
+
 	return &VersionRepo{
-		downloadLock: &sync.Map{},
-		repoPath:     repoPath,
-		arch:         arch,
-		platform:     platform,
+		lock:     &sync.Map{},
+		repoPath: repoPath,
+		arch:     arch,
+		platform: platform,
 	}, nil
 }
 
@@ -92,11 +92,6 @@ func (r *VersionRepo) dir(version string) string {
 // returns the path to the downloaded file or an error if there was a
 // problem.
 func (r *VersionRepo) download(version string) (string, error) {
-	downloadLock := r.getLock(version)
-
-	downloadLock.Lock()
-	defer downloadLock.Unlock()
-
 	url := fmt.Sprintf(terraformZipFileDownloadURL, version, version, r.platform, r.arch)
 
 	// Temporary directory for downloading Terraform and extracting the zip file
@@ -128,7 +123,9 @@ func (r *VersionRepo) download(version string) (string, error) {
 	targetDir := r.dir(version)
 
 	// Make repo dir
-	os.MkdirAll(targetDir, os.ModePerm)
+	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+		return "", err
+	}
 
 	// Move binary to repo path
 	if err := os.Rename(terraformBinaryPath, path.Join(targetDir, "terraform")); err != nil {
@@ -145,7 +142,7 @@ func (r *VersionRepo) exists(version string) bool {
 }
 
 func (r *VersionRepo) getLock(version string) *sync.Mutex {
-	v, _ := r.downloadLock.LoadOrStore(version, &sync.Mutex{})
+	v, _ := r.lock.LoadOrStore(version, &sync.Mutex{})
 	return v.(*sync.Mutex)
 }
 
@@ -153,6 +150,11 @@ func (r *VersionRepo) getLock(version string) *sync.Mutex {
 // that version. If the binary doesn't exist, it will be downloaded from
 // the Terraform website automatically.
 func (r *VersionRepo) Get(version string) (string, error) {
+	lock := r.getLock(version)
+
+	lock.Lock()
+	defer lock.Unlock()
+
 	path := r.terraformPath(version)
 	if !utils.FileExists(path) {
 		return r.download(version)
