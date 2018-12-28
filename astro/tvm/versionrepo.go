@@ -161,8 +161,8 @@ func (r *VersionRepo) getLock(version string) *sync.Mutex {
 func (r *VersionRepo) Get(version string) (string, error) {
 	lock := r.getLock(version)
 
-	// Lock() here will block if another thread is currently downloading
-	// Terraform.
+	// Lock() here will block and wait if another thread is currently
+	// downloading Terraform.
 	lock.Lock()
 	defer lock.Unlock()
 
