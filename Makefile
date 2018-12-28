@@ -42,10 +42,11 @@ install:
 
 .PHONY: lint
 lint:
-	@f="$$(find . -name '*.go' ! -path './vendor/*' | xargs grep -L 'Licensed under the Apache License')" || { \
+	@f="$$(find . -name '*.go' ! -path './vendor/*' | xargs grep -L 'Licensed under the Apache License')"; \
+	if [ ! -z "$$f" ]; then \
 		echo "ERROR: Files missing license header:"$$'\n'"$$f" >&2; \
 		exit 1; \
-	};
+	fi;
 
 .PHONY: test
 test: vendor
