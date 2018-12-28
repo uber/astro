@@ -1,6 +1,6 @@
 SHELL = /bin/bash -o pipefail
 
-export GO111MODULE=on
+SRC = $(shell find . -name '*.go')
 
 define PRE_COMMIT_HOOK
 #!/bin/sh -xe
@@ -24,10 +24,10 @@ export PRE_COMMIT_HOOK
 bin:
 	mkdir -p bin
 
-bin/astro: bin vendor
+bin/astro: bin vendor $(SRC)
 	go build -o bin/astro github.com/uber/astro/astro/cli/astro
 
-bin/tvm: bin vendor
+bin/tvm: bin vendor $(SRC)
 	go build -o bin/tvm github.com/uber/astro/astro/tvm/cli/tvm
 
 .PHONY: clean
