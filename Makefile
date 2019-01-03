@@ -1,3 +1,5 @@
+export GO111MODULE=on
+
 SHELL = /bin/bash -o pipefail
 
 SRC = $(shell find . -name '*.go')
@@ -24,10 +26,10 @@ export PRE_COMMIT_HOOK
 bin:
 	mkdir -p bin
 
-bin/astro: bin vendor $(SRC)
+bin/astro: bin $(SRC)
 	go build -o bin/astro github.com/uber/astro/astro/cli/astro
 
-bin/tvm: bin vendor $(SRC)
+bin/tvm: bin $(SRC)
 	go build -o bin/tvm github.com/uber/astro/astro/tvm/cli/tvm
 
 .PHONY: clean
@@ -49,10 +51,6 @@ lint:
 	fi;
 
 .PHONY: test
-test: vendor
+test:
 	go test -timeout 1m -coverprofile=.coverage.out ./... \
 		|grep -v -E '^\?'
-
-.PHONY: vendor
-vendor:
-	dep ensure
