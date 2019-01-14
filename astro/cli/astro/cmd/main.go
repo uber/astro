@@ -15,34 +15,26 @@
  */
 
 // Package cmd contains the source for the `astro` command line tool
-// that operators use to interact with the project. The layout of files
-// in this package is defined by Cobra, which is the library that powers
-// the CLI tool.
+// that operators use to interact with the project.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/uber/astro/astro"
-	"github.com/uber/astro/astro/conf"
 	"github.com/uber/astro/astro/logger"
 
 	"github.com/spf13/cobra"
 )
 
+// CLI flags
 var (
-	userCfgFile string
-	trace       bool
-	userVars    map[string]string
-	verbose     bool
-
-	_flags   []*Flag
-	_conf    *conf.Project
-	_project *astro.Project
+	trace        bool
+	userCfgFile  string
+	projectFlags []*ProjectFlag
+	verbose      bool
 )
 
 var rootCmd = &cobra.Command{
@@ -50,15 +42,6 @@ var rootCmd = &cobra.Command{
 	Short:         "A tool for managing multiple Terraform modules.",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() error {
-	// Best effort to parse flags from config files for now. TODO: we need to
-	// deal with errors here.
-	initUserFlagsFromConfig()
-	return rootCmd.Execute()
 }
 
 func init() {
@@ -77,90 +60,32 @@ func init() {
 	})
 }
 
-func initUserFlagsFromConfig() error {
-	findConfig := &cobra.Command{
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		FParseErrWhitelist: cobra.FParseErrWhitelist{
-			UnknownFlags: true,
-		},
+// Main is the main entry point into the CLI program.
+func Main() (exitCode int) {
+	// Try to parse user flags from their astro config file. Reading the astro
+	// config could fail with an error, e.g. if there is no config file found,
+	// but this is not a hard failure. Save the error for later, so we can let
+	// the user know about the error in certain cases.
+	projectFlags, projectFlagsLoadErr := loadProjectFlagsFromConfig()
+	if projectFlags != nil && len(projectFlags) > 0 {
+		addProjectFlagsToCommands(projectFlags, applyCmd, planCmd)
 	}
 
-	findConfig.PersistentFlags().StringVar(&userCfgFile, "config", "", "config file")
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 
-	if err := findConfig.ParseFlags(os.Args); err != nil {
-		return err
-	}
-	config, err := currentConfig()
-	if err != nil {
-		return err
-	}
-
-	_flags, err = commandLineFlags(config)
-	if err != nil {
-		return err
-	}
-	for _, flag := range _flags {
-		usage := fmt.Sprintf("Set \"%s\" Terraform variable", flag.Variable)
-		for _, command := range rootCmd.Commands() {
-			if len(flag.AllowedValues) > 0 {
-				command.Flags().Var(&StringEnum{Flag: flag}, flag.Flag, usage)
-			} else {
-				command.Flags().StringVar(&flag.Value, flag.Flag, "", usage)
-			}
-			if flag.IsRequired {
-				command.MarkFlagRequired(flag.Flag)
-			}
+		// If there was an error when parsing the user's project config file,
+		// then display a message to let them know in case they're wondering
+		// why their CLI flags are not working.
+		if projectFlagsLoadErr != nil && projectFlagsLoadErr != errCannotFindConfig {
+			fmt.Fprintf(os.Stderr, "\nThere was an error loading astro config:\n")
+			fmt.Fprintln(os.Stderr, projectFlagsLoadErr.Error())
 		}
+
+		// exit with error
+		return 1
 	}
 
-	return nil
-}
-
-// configFile returns the path of the project config file.
-func configFile() (string, error) {
-	// User provided config file path takes precedence
-	if userCfgFile != "" {
-		return userCfgFile, nil
-	}
-
-	// Try to find the config file
-	if path := firstExistingFilePath(configFileSearchPaths...); path != "" {
-		return path, nil
-	}
-
-	return "", errors.New("unable to find config file")
-}
-
-func currentConfig() (*conf.Project, error) {
-	if _conf != nil {
-		return _conf, nil
-	}
-
-	file, err := configFile()
-	if err != nil {
-		return nil, err
-	}
-	_conf, err = astro.NewConfigFromFile(file)
-
-	return _conf, err
-}
-
-func currentProject() (*astro.Project, error) {
-	if _project != nil {
-		return _project, nil
-	}
-
-	config, err := currentConfig()
-	if err != nil {
-		return nil, err
-	}
-	c, err := astro.NewProject(*config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load module configuration: %v", err)
-	}
-
-	_project = c
-
-	return _project, nil
+	// success
+	return 0
 }

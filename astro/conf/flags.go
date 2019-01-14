@@ -16,19 +16,10 @@
 
 package conf
 
-// Variable represents a variable that can be passed into a
-// Terraform module.
-type Variable struct {
-	// Name is the name/key of the variable.
+// Flag is a user
+type Flag struct {
+	// Name of the flag that is visible to the user, e.g. on the CLI.
 	Name string
-	// Values is a list of possible values for the variable. A value of nil
-	// means the possible values are unbound.
-	Values []string
-}
-
-// IsFilter returns true if the command-line parameter acts as a filter
-//
-// The full behaviour is described in the README
-func (v *Variable) IsFilter() bool {
-	return len(v.Values) > 0
+	// Description is an optional description to show to the user.
+	Description string
 }

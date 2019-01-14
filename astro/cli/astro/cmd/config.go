@@ -16,7 +16,14 @@
 
 package cmd
 
-import "github.com/uber/astro/astro/utils"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/uber/astro/astro"
+	"github.com/uber/astro/astro/conf"
+	"github.com/uber/astro/astro/utils"
+)
 
 // configFileSearchPaths is the default list of paths the astro CLI
 // will attempt to find a config file at.
@@ -27,6 +34,14 @@ var configFileSearchPaths = []string{
 	"terraform/astro.yml",
 }
 
+var errCannotFindConfig = errors.New("unable to find config file")
+
+// Global cache
+var (
+	_conf    *conf.Project
+	_project *astro.Project
+)
+
 // firstExistingFilePath takes a list of paths and returns the first one
 // where a file exists (or symlink to a file).
 func firstExistingFilePath(paths ...string) string {
@@ -36,4 +51,55 @@ func firstExistingFilePath(paths ...string) string {
 		}
 	}
 	return ""
+}
+
+// configFile returns the path of the project config file.
+func configFile() (string, error) {
+	// User provided config file path takes precedence
+	if userCfgFile != "" {
+		return userCfgFile, nil
+	}
+
+	// Try to find the config file
+	if path := firstExistingFilePath(configFileSearchPaths...); path != "" {
+		return path, nil
+	}
+
+	return "", errCannotFindConfig
+}
+
+// currentConfig loads configuration or returns the previously loaded config.
+func currentConfig() (*conf.Project, error) {
+	if _conf != nil {
+		return _conf, nil
+	}
+
+	file, err := configFile()
+	if err != nil {
+		return nil, err
+	}
+	_conf, err = astro.NewConfigFromFile(file)
+
+	return _conf, err
+}
+
+// currentProject creates a new astro project or returns the previously created
+// astro project.
+func currentProject() (*astro.Project, error) {
+	if _project != nil {
+		return _project, nil
+	}
+
+	config, err := currentConfig()
+	if err != nil {
+		return nil, err
+	}
+	c, err := astro.NewProject(*config)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load module configuration: %v", err)
+	}
+
+	_project = c
+
+	return _project, nil
 }

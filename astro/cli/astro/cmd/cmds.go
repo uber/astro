@@ -40,7 +40,7 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
-		vars := userVariables()
+		vars := flagsToUserVariables()
 
 		var moduleNames []string
 		if moduleNamesString != "" {
@@ -81,7 +81,7 @@ var planCmd = &cobra.Command{
 			return err
 		}
 
-		vars := userVariables()
+		vars := flagsToUserVariables()
 
 		var moduleNames []string
 		if moduleNamesString != "" {
@@ -111,25 +111,6 @@ var planCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func userVariables() *astro.UserVariables {
-	values := make(map[string]string)
-	filters := make(map[string]bool)
-
-	for _, flag := range _flags {
-		if flag.Value != "" {
-			values[flag.Variable] = flag.Value
-			if flag.IsFilter {
-				filters[flag.Variable] = true
-			}
-		}
-	}
-
-	return &astro.UserVariables{
-		Values:  values,
-		Filters: filters,
-	}
 }
 
 func init() {
