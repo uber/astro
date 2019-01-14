@@ -22,64 +22,83 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHelpNoVariables(t *testing.T) {
+func TestHelpUserFlags(t *testing.T) {
 	result := runTest(t, []string{
-		"--config=fixtures/flags/no_variables.yaml",
+		"--config=simple_variables.yaml",
 		"plan",
 		"--help",
 	}, "fixtures/flags", VERSION_LATEST)
-	assert.NotContains(t, result.Stderr.String(), "User flags:")
+	assert.Contains(t, result.Stdout.String(), "User flags:")
+	assert.Contains(t, result.Stdout.String(), "--foo")
+	assert.Contains(t, result.Stdout.String(), "--baz")
+	assert.Contains(t, result.Stdout.String(), "Baz Description")
+	assert.Contains(t, result.Stdout.String(), "--qux")
 }
 
-// func TestSimpleVariables(t *testing.T) {
-// 	c, err := astro.NewConfigFromFile("fixtures/flags/simple_variables.yaml")
-// 	require.NoError(t, err)
+func TestHelpNoUserFlags(t *testing.T) {
+	result := runTest(t, []string{
+		"--config=no_variables.yaml",
+		"plan",
+		"--help",
+	}, "fixtures/flags", VERSION_LATEST)
+	assert.NotContains(t, result.Stdout.String(), "User flags:")
+}
 
-// 	flags, err := commandLineFlags(c)
-// 	require.NoError(t, err)
+func TestHelpShowsConfigLoadError(t *testing.T) {
+	result := runTest(t, []string{
+		"--config=/nonexistent/path/to/config",
+		"plan",
+		"--help",
+	}, "fixtures/flags", VERSION_LATEST)
+	assert.Contains(t, result.Stderr.String(), "There was an error loading astro config")
+}
 
-// 	assert.Equal(t, []*Flag{
-// 		&Flag{
-// 			Variable:   "no_flag",
-// 			Flag:       "no_flag",
-// 			IsRequired: true,
-// 		},
-// 		&Flag{
-// 			Variable:   "with_flag",
-// 			Flag:       "flag_name",
-// 			IsRequired: true,
-// 		},
-// 		&Flag{
-// 			Variable: "with_values",
-// 			Flag:     "with_values",
-// 			IsFilter: true,
-// 			AllowedValues: []string{
-// 				"dev",
-// 				"prod",
-// 				"staging",
-// 			},
-// 		},
-// 	}, flags)
-// }
+func TestHelpDoesntAlwaysShowLoadingError(t *testing.T) {
+	result := runTest(t, []string{
+		"--help",
+	}, "fixtures/flags", VERSION_LATEST)
+	assert.NotContains(t, result.Stderr.String(), "There was an error loading astro config")
+}
 
-// func TestMergeValues(t *testing.T) {
-// 	c, err := astro.NewConfigFromFile("fixtures/flags/merge_values.yaml")
-// 	require.NoError(t, err)
+func TestPlanErrorOnMissingValues(t *testing.T) {
+	result := runTest(t, []string{
+		"--config=simple_variables.yaml",
+		"plan",
+	}, "fixtures/flags", VERSION_LATEST)
+	assert.Error(t, result.Err)
+	assert.Contains(t, result.Stderr.String(), "missing required flags")
+	assert.Contains(t, result.Stderr.String(), "--foo")
+	assert.Contains(t, result.Stderr.String(), "--baz")
+}
 
-// 	flags, err := commandLineFlags(c)
-// 	require.NoError(t, err)
+func TestPlanAllowedValues(t *testing.T) {
+	tt := []string{
+		"mgmt",
+		"dev",
+		"staging",
+		"prod",
+	}
+	for _, env := range tt {
+		t.Run(env, func(t *testing.T) {
+			result := runTest(t, []string{
+				"--config=merge_values.yaml",
+				"plan",
+				"--environment",
+				env,
+			}, "fixtures/flags", VERSION_LATEST)
+			assert.NoError(t, result.Err)
+		})
+	}
+}
 
-// 	assert.Equal(t, []*Flag{
-// 		&Flag{
-// 			Variable: "environment",
-// 			Flag:     "environment",
-// 			IsFilter: true,
-// 			AllowedValues: []string{
-// 				"dev",
-// 				"mgmt",
-// 				"prod",
-// 				"staging",
-// 			},
-// 		},
-// 	}, flags)
-// }
+func TestPlanFailOnNotAllowedValue(t *testing.T) {
+	result := runTest(t, []string{
+		"--config=merge_values.yaml",
+		"plan",
+		"--environment",
+		"foo",
+	}, "fixtures/flags", VERSION_LATEST)
+	assert.Error(t, result.Err)
+	assert.Contains(t, result.Stderr.String(), "invalid argument")
+	assert.Contains(t, result.Stderr.String(), "allowed values")
+}

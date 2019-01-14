@@ -94,10 +94,6 @@ func addProjectFlagsToCommands(flags []*ProjectFlag, cmds ...*cobra.Command) {
 	for _, cmd := range cmds {
 		for _, flag := range flags {
 			flag.AddToFlagSet(cmd.Flags())
-
-			if len(flag.AllowedValues) > 0 {
-				cmd.MarkFlagRequired(flag.Name)
-			}
 		}
 
 		// Update help text for the command to include the user flags
@@ -130,7 +126,7 @@ func loadProjectFlagsFromConfig() ([]*ProjectFlag, error) {
 	// config doesn't fail with pflag.ErrHelp
 	args := []string{}
 	for _, arg := range os.Args {
-		if arg == "-h" || arg == "--help" {
+		if arg == "-h" || arg == "--help" || arg == "-help" {
 			continue
 		}
 		args = append(args, arg)
@@ -222,6 +218,22 @@ func flagsToFlagSet(flags []*ProjectFlag) *pflag.FlagSet {
 		flag.AddToFlagSet(flagSet)
 	}
 	return flagSet
+}
+
+// flagName returns the flag name, given a variable name.
+func flagName(variableName string) string {
+	if flag, ok := _conf.Flags[variableName]; ok {
+		return flag.Name
+	}
+	return variableName
+}
+
+// varsToFlagNames converts a list of variable names to CLI flags.
+func varsToFlagNames(variableNames []string) (flagNames []string) {
+	for _, v := range variableNames {
+		flagNames = append(flagNames, fmt.Sprintf("--%s", flagName(v)))
+	}
+	return flagNames
 }
 
 func uniqueStrings(strings []string) []string {

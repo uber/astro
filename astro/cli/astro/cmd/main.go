@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/uber/astro/astro/logger"
 
@@ -62,30 +63,41 @@ func init() {
 
 // Main is the main entry point into the CLI program.
 func Main() (exitCode int) {
+	var projectFlagsLoadErr error
+
 	// Try to parse user flags from their astro config file. Reading the astro
 	// config could fail with an error, e.g. if there is no config file found,
 	// but this is not a hard failure. Save the error for later, so we can let
 	// the user know about the error in certain cases.
-	projectFlags, projectFlagsLoadErr := loadProjectFlagsFromConfig()
+	projectFlags, projectFlagsLoadErr = loadProjectFlagsFromConfig()
 	if projectFlags != nil && len(projectFlags) > 0 {
 		addProjectFlagsToCommands(projectFlags, applyCmd, planCmd)
 	}
 
+	rc := 0
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 
-		// If there was an error when parsing the user's project config file,
-		// then display a message to let them know in case they're wondering
-		// why their CLI flags are not working.
-		if projectFlagsLoadErr != nil && projectFlagsLoadErr != errCannotFindConfig {
-			fmt.Fprintf(os.Stderr, "\nThere was an error loading astro config:\n")
-			fmt.Fprintln(os.Stderr, projectFlagsLoadErr.Error())
+		if projectFlagsLoadErr != nil && strings.Contains(err.Error(), "unknown flag") {
+			printConfigLoadingError(projectFlagsLoadErr)
 		}
 
 		// exit with error
-		return 1
+		rc = 1
 	}
 
-	// success
-	return 0
+	// If there was an error when parsing the user's project config file,
+	// then display a message to let them know in case they're wondering
+	// why their CLI flags are not showing up.
+	if projectFlagsLoadErr != nil && projectFlagsLoadErr != errCannotFindConfig {
+		printConfigLoadingError(projectFlagsLoadErr)
+	}
+
+	return rc
+}
+
+func printConfigLoadingError(e error) {
+	fmt.Fprintf(os.Stderr, "\nNOTE: There was an error loading astro config:\n")
+	fmt.Fprintln(os.Stderr, e.Error())
 }

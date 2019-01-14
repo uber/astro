@@ -1,14 +1,18 @@
 ---
 
 terraform:
-  version: 0.11.7
+  path: ../../../../../fixtures/mock-terraform/success
+
+flags:
+  bar:
+    name: baz
+    description: Baz Description
 
 modules:
-  - name: foo
+  - name: fooModule
     path: .
     variables:
-      - name: no_flag
-      - name: with_flag
-        flag: flag_name
-      - name: with_values
+      - name: foo
+      - name: bar
+      - name: qux
         values: [dev, staging, prod]

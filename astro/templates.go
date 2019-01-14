@@ -19,12 +19,31 @@ package astro
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 )
 
+var (
+	// matches "{fox}" in "the quick {fox}"
+	reVarPlaceholder = regexp.MustCompile(`\{(.*)\}`)
+)
+
+// extractMissingVarNames takes an input string like "foo {bar} {baz}" and
+// returns a list of the var names between {}, e.g. [bar, baz].
+func extractMissingVarNames(s string) (vars []string) {
+	matches := reVarPlaceholder.FindAllStringSubmatch(s, -1)
+	for _, match := range matches {
+		vars = append(vars, match[1])
+	}
+	return vars
+}
+
+// assertAllVarsReplaced asserts that all vars have been replaced in a string,
+// i.e. that there are no values like "{baz}" in the string. It returns an
+// error if there is.
 func assertAllVarsReplaced(s string) error {
-	if strings.ContainsAny(s, "{}") || strings.Contains(s, "<no value>") {
+	if strings.ContainsAny(s, "{}") {
 		return fmt.Errorf("not all vars replaced in string: %v", s)
 	}
 	return nil

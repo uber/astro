@@ -57,7 +57,7 @@ var applyCmd = &cobra.Command{
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("error running Terraform: %v", err)
+			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
 		err = printExecStatus(status, results)
@@ -99,7 +99,7 @@ var planCmd = &cobra.Command{
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("error running Terraform: %v", err)
+			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
 		err = printExecStatus(status, results)
@@ -120,4 +120,16 @@ func init() {
 	planCmd.PersistentFlags().BoolVar(&detach, "detach", false, "disconnect remote state before planning")
 	planCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to plan")
 	rootCmd.AddCommand(planCmd)
+}
+
+// processError interprets certain astro errors and embellishes them for
+// display on the CLI.
+func processError(err error) error {
+	switch e := err.(type) {
+	case astro.MissingRequiredVarsError:
+		// reverse map variables to CLI flags
+		return fmt.Errorf("missing required flags: %s", strings.Join(varsToFlagNames(e.MissingVars()), ", "))
+	default:
+		return err
+	}
 }
