@@ -40,7 +40,7 @@ var applyCmd = &cobra.Command{
 			return err
 		}
 
-		vars := userVariables()
+		vars := flagsToUserVariables()
 
 		var moduleNames []string
 		if moduleNamesString != "" {
@@ -57,7 +57,7 @@ var applyCmd = &cobra.Command{
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("error running Terraform: %v", err)
+			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
 		err = printExecStatus(status, results)
@@ -81,7 +81,7 @@ var planCmd = &cobra.Command{
 			return err
 		}
 
-		vars := userVariables()
+		vars := flagsToUserVariables()
 
 		var moduleNames []string
 		if moduleNamesString != "" {
@@ -99,7 +99,7 @@ var planCmd = &cobra.Command{
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("error running Terraform: %v", err)
+			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
 		err = printExecStatus(status, results)
@@ -113,25 +113,6 @@ var planCmd = &cobra.Command{
 	},
 }
 
-func userVariables() *astro.UserVariables {
-	values := make(map[string]string)
-	filters := make(map[string]bool)
-
-	for _, flag := range _flags {
-		if flag.Value != "" {
-			values[flag.Variable] = flag.Value
-			if flag.IsFilter {
-				filters[flag.Variable] = true
-			}
-		}
-	}
-
-	return &astro.UserVariables{
-		Values:  values,
-		Filters: filters,
-	}
-}
-
 func init() {
 	applyCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to apply")
 	rootCmd.AddCommand(applyCmd)
@@ -139,4 +120,16 @@ func init() {
 	planCmd.PersistentFlags().BoolVar(&detach, "detach", false, "disconnect remote state before planning")
 	planCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to plan")
 	rootCmd.AddCommand(planCmd)
+}
+
+// processError interprets certain astro errors and embellishes them for
+// display on the CLI.
+func processError(err error) error {
+	switch e := err.(type) {
+	case astro.MissingRequiredVarsError:
+		// reverse map variables to CLI flags
+		return fmt.Errorf("missing required flags: %s", strings.Join(varsToFlagNames(e.MissingVars()), ", "))
+	default:
+		return err
+	}
 }

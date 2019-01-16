@@ -228,3 +228,18 @@ database-dev-us-east-1: OK No changes (9s)
 app-dev-us-east-1: OK No changes (10s)
 >
 ```
+
+#### Remapping CLI flags
+
+Astro is meant to be used every day by operators. If your Terraform variable names are long-winded to type at the CLI, you can remap them to something simpler. For example, instead of typing `--environment dev`, you may wish to shoren this to `--env dev`.
+
+You can specify a `flags:` block in your project configuration, like:
+
+```
+flags:
+  environment:
+    name: env
+    description: Environment to deploy to
+```
+
+This will remap the "environment" Terraform variable to `--env` on the astro command line. You can also specify a description that will show up in the `--help` text.

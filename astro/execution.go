@@ -24,6 +24,30 @@ import (
 	"github.com/uber/astro/astro/conf"
 )
 
+// MissingRequiredVarsError is an error type that is returned from plan or
+// apply when there are variables that need to be provided at run time that are
+// missing.
+type MissingRequiredVarsError struct {
+	missing []string
+}
+
+func (e *MissingRequiredVarsError) plural() string {
+	if len(e.missing) > 0 {
+		return "s"
+	}
+	return ""
+}
+
+// Error is the error message, so this satisfies the error interface.
+func (e MissingRequiredVarsError) Error() string {
+	return fmt.Sprintf("missing required variable%s: %s", e.plural(), strings.Join(e.missing, ", "))
+}
+
+// MissingVars returns a list of the missing user variables.
+func (e MissingRequiredVarsError) MissingVars() []string {
+	return e.missing
+}
+
 // terraformExecution is an interface that covers both bound and unbound
 // executions.
 type terraformExecution interface {
@@ -115,12 +139,18 @@ type unboundExecution struct {
 func (e *unboundExecution) bind(userVars map[string]string) (*boundExecution, error) {
 	boundVars := union(e.Variables(), userVars)
 
+	missingVars := []string{}
+
 	// Check that the user provided variables replace everything that
 	// needs to be replaced.
 	for _, val := range boundVars {
 		if err := assertAllVarsReplaced(val); err != nil {
-			return nil, fmt.Errorf("unable to bind execution: %v; %v", e.ID(), err)
+			missingVars = append(missingVars, extractMissingVarNames(val)...)
 		}
+	}
+
+	if len(missingVars) > 0 {
+		return nil, MissingRequiredVarsError{missing: missingVars}
 	}
 
 	// Create a copy of the config and search attributes for placeholders

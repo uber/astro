@@ -24,6 +24,10 @@ import (
 
 // Project represents the structure of the YAML configuration for astro.
 type Project struct {
+	// Flags is a mapping of module variable names to user flags, e.g. for on
+	// the CLI.
+	Flags map[string]Flag
+
 	// Hooks contains configuration of hooks that can be invoked at various
 	// stages of the CLI lifecycle.
 	Hooks Hooks

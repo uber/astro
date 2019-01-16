@@ -56,6 +56,8 @@ var (
 	terraformVersionRepo *tvm.VersionRepo
 )
 
+const VERSION_LATEST = ""
+
 // compiles the astro binary and returns the path to it.
 func compileAstro() (string, error) {
 	f, err := ioutil.TempFile("", "")
@@ -108,6 +110,10 @@ type testResult struct {
 
 func runTest(t *testing.T, args []string, fixtureBasePath string, version string) *testResult {
 	fixturePath := fixtureBasePath
+
+	if version == VERSION_LATEST {
+		version = terraformVersionsToTest[len(terraformVersionsToTest)-1]
+	}
 
 	// Determine if this version has a version-specific fixture.
 	versionSpecificFixturePath := fmt.Sprintf("%s-%s", fixtureBasePath, version)
@@ -182,6 +188,12 @@ func getSessionDirs(sessionBaseDir string) ([]string, error) {
 	}
 
 	return sessionDirs, nil
+}
+
+func TestHelpWorks(t *testing.T) {
+	result := runTest(t, []string{"--help"}, "", VERSION_LATEST)
+	assert.Contains(t, "A tool for managing multiple Terraform modules", result.Stderr.String())
+	assert.NoError(t, result.Err)
 }
 
 func TestProjectApplyChangesSuccess(t *testing.T) {
