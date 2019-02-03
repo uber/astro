@@ -1,0 +1,18 @@
+---
+
+terraform:
+  path: ../../../../../fixtures/mock-terraform/success
+
+flags:
+  bar:
+    name: baz
+    description: Baz Description
+
+modules:
+  - name: fooModule
+    path: .
+    variables:
+      - name: foo
+      - name: bar
+      - name: qux
+        values: [dev, staging, prod]

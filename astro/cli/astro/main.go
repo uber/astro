@@ -17,11 +17,20 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/uber/astro/astro/cli/astro/cmd"
 )
 
 func main() {
-	os.Exit(cmd.Main())
+	cli, err := cmd.NewAstroCLI(
+		cmd.WithStdout(os.Stdout),
+		cmd.WithStderr(os.Stderr),
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(cli.Run(os.Args[1:]))
 }

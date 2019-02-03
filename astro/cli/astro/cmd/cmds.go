@@ -23,112 +23,146 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/uber/astro/astro"
+	"github.com/uber/astro/astro/logger"
 )
 
-var (
-	detach            bool
-	moduleNamesString string
-)
+func (cli *AstroCLI) createRootCommand() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:               "astro",
+		Short:             "A tool for managing multiple Terraform modules.",
+		SilenceUsage:      true,
+		SilenceErrors:     true,
+		PersistentPreRunE: cli.preRun,
+	}
 
-var applyCmd = &cobra.Command{
-	Use:                   "apply [flags] [-- [Terraform argument]...]",
-	DisableFlagsInUseLine: true,
-	Short:                 "Run Terraform apply on all modules",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		c, err := currentProject()
-		if err != nil {
-			return err
-		}
+	rootCmd.PersistentFlags().BoolVarP(&cli.flags.verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&cli.flags.trace, "trace", "", false, "trace output")
+	rootCmd.PersistentFlags().StringVar(&cli.flags.userCfgFile, "config", "", "config file")
 
-		vars := flagsToUserVariables()
-
-		var moduleNames []string
-		if moduleNamesString != "" {
-			moduleNames = strings.Split(moduleNamesString, ",")
-		}
-
-		status, results, err := c.Apply(
-			astro.ApplyExecutionParameters{
-				ExecutionParameters: astro.ExecutionParameters{
-					ModuleNames:         moduleNames,
-					UserVars:            vars,
-					TerraformParameters: args,
-				},
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("ERROR: %v", processError(err))
-		}
-
-		err = printExecStatus(status, results)
-		if err != nil {
-			return fmt.Errorf("Done; there were errors; some modules may not have been applied")
-		}
-
-		fmt.Println("Done")
-
-		return nil
-	},
+	return rootCmd
 }
 
-var planCmd = &cobra.Command{
-	Use:                   "plan [flags] [-- [Terraform argument]...]",
-	DisableFlagsInUseLine: true,
-	Short:                 "Generate execution plans for modules",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		c, err := currentProject()
-		if err != nil {
-			return err
-		}
+func (cli *AstroCLI) createApplyCmd() *cobra.Command {
+	applyCmd := &cobra.Command{
+		Use:                   "apply [flags] [-- [Terraform argument]...]",
+		DisableFlagsInUseLine: true,
+		Short:                 "Run Terraform apply on all modules",
+		RunE:                  cli.runApply,
+	}
 
-		vars := flagsToUserVariables()
+	applyCmd.PersistentFlags().StringVar(&cli.flags.moduleNamesString, "modules", "", "list of modules to apply")
 
-		var moduleNames []string
-		if moduleNamesString != "" {
-			moduleNames = strings.Split(moduleNamesString, ",")
-		}
-
-		status, results, err := c.Plan(
-			astro.PlanExecutionParameters{
-				ExecutionParameters: astro.ExecutionParameters{
-					ModuleNames:         moduleNames,
-					UserVars:            vars,
-					TerraformParameters: args,
-				},
-				Detach: detach,
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("ERROR: %v", processError(err))
-		}
-
-		err = printExecStatus(status, results)
-		if err != nil {
-			return errors.New("Done; there were errors")
-		}
-
-		fmt.Println("Done")
-
-		return nil
-	},
+	return applyCmd
 }
 
-func init() {
-	applyCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to apply")
-	rootCmd.AddCommand(applyCmd)
+func (cli *AstroCLI) createPlanCmd() *cobra.Command {
+	planCmd := &cobra.Command{
+		Use:                   "plan [flags] [-- [Terraform argument]...]",
+		DisableFlagsInUseLine: true,
+		Short:                 "Generate execution plans for modules",
+		RunE:                  cli.runPlan,
+	}
 
-	planCmd.PersistentFlags().BoolVar(&detach, "detach", false, "disconnect remote state before planning")
-	planCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to plan")
-	rootCmd.AddCommand(planCmd)
+	planCmd.PersistentFlags().BoolVar(&cli.flags.detach, "detach", false, "disconnect remote state before planning")
+	planCmd.PersistentFlags().StringVar(&cli.flags.moduleNamesString, "modules", "", "list of modules to plan")
+
+	return planCmd
+}
+
+func (cli *AstroCLI) preRun(cmd *cobra.Command, args []string) error {
+	logger.Trace.Println("cli: in preRun")
+	logger.Trace.Printf("cli: preRun args: %s\n", args)
+
+	// If a user specified config has not been loaded, try to autodiscover the
+	// config file.
+	if cli.config == nil {
+		if err := cli.loadConfig(cli.resolveConfigFilePath()); err != nil {
+			return err
+		}
+	}
+
+	// Load astro from config
+	project, err := astro.NewProject(astro.WithConfig(*cli.config))
+	if err != nil {
+		return err
+	}
+	cli.project = project
+
+	return nil
+}
+
+func (cli *AstroCLI) runApply(cmd *cobra.Command, args []string) error {
+	vars := flagsToUserVariables(cli.flags.projectFlags)
+
+	var moduleNames []string
+	if cli.flags.moduleNamesString != "" {
+		moduleNames = strings.Split(cli.flags.moduleNamesString, ",")
+	}
+
+	status, results, err := cli.project.Apply(
+		astro.ApplyExecutionParameters{
+			ExecutionParameters: astro.ExecutionParameters{
+				ModuleNames:         moduleNames,
+				UserVars:            vars,
+				TerraformParameters: args,
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("ERROR: %v", cli.processError(err))
+	}
+
+	err = cli.printExecStatus(status, results)
+	if err != nil {
+		return fmt.Errorf("Done; there were errors; some modules may not have been applied")
+	}
+
+	fmt.Fprintln(cli.stdout, "Done")
+
+	return nil
+}
+
+func (cli *AstroCLI) runPlan(cmd *cobra.Command, args []string) error {
+	logger.Trace.Printf("cli: plan args: %s\n", args)
+
+	vars := flagsToUserVariables(cli.flags.projectFlags)
+
+	var moduleNames []string
+	if cli.flags.moduleNamesString != "" {
+		moduleNames = strings.Split(cli.flags.moduleNamesString, ",")
+	}
+
+	status, results, err := cli.project.Plan(
+		astro.PlanExecutionParameters{
+			ExecutionParameters: astro.ExecutionParameters{
+				ModuleNames:         moduleNames,
+				UserVars:            vars,
+				TerraformParameters: args,
+			},
+			Detach: cli.flags.detach,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("ERROR: %v", cli.processError(err))
+	}
+
+	err = cli.printExecStatus(status, results)
+	if err != nil {
+		return errors.New("Done; there were errors")
+	}
+
+	fmt.Fprintln(cli.stdout, "Done")
+
+	return nil
 }
 
 // processError interprets certain astro errors and embellishes them for
 // display on the CLI.
-func processError(err error) error {
+func (cli *AstroCLI) processError(err error) error {
 	switch e := err.(type) {
 	case astro.MissingRequiredVarsError:
 		// reverse map variables to CLI flags
-		return fmt.Errorf("missing required flags: %s", strings.Join(varsToFlagNames(e.MissingVars()), ", "))
+		return fmt.Errorf("missing required flags: %s", strings.Join(cli.varsToFlagNames(e.MissingVars()), ", "))
 	default:
 		return err
 	}

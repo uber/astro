@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -33,11 +32,11 @@ import (
 // user flags from the astro project config.
 const userHelpTemplate = `
 User flags:
-{{.ProjectFlagsHelp}}`
+{{.projectFlagsHelp}}`
 
-// ProjectFlag is a CLI flag that represents a variable from the user's astro
+// projectFlag is a CLI flag that represents a variable from the user's astro
 // project config file.
-type ProjectFlag struct {
+type projectFlag struct {
 	// Name of the user flag at the command line
 	Name string
 	// Value is the string var the flag value will be put into
@@ -52,44 +51,50 @@ type ProjectFlag struct {
 }
 
 // AddToFlagSet adds the flag to the specified flag set.
-func (flag *ProjectFlag) AddToFlagSet(flags *pflag.FlagSet) {
+func (flag *projectFlag) AddToFlagSet(flags *pflag.FlagSet) {
 	if len(flag.AllowedValues) > 0 {
-		flags.Var(&StringEnum{Flag: flag}, flag.Name, flag.Description)
+		flags.Var(&stringEnum{flag: flag}, flag.Name, flag.Description)
 	} else {
 		flags.StringVar(&flag.Value, flag.Name, "", flag.Description)
 	}
 }
 
-// StringEnum implements pflag.Value interface, to check that the passed-in
+// stringEnum implements pflag.Value interface, to check that the passed-in
 // value is one of the strings in AllowedValues.
-type StringEnum struct {
-	Flag *ProjectFlag
+type stringEnum struct {
+	flag *projectFlag
 }
 
 // String returns the current value
-func (s *StringEnum) String() string {
-	return s.Flag.Value
+func (s *stringEnum) String() string {
+	return s.flag.Value
 }
 
 // Set checks that the passed-in value is only of the allowd values, and
 // returns an error if it is not
-func (s *StringEnum) Set(value string) error {
-	for _, allowedValue := range s.Flag.AllowedValues {
+func (s *stringEnum) Set(value string) error {
+	for _, allowedValue := range s.flag.AllowedValues {
 		if allowedValue == value {
-			s.Flag.Value = value
+			s.flag.Value = value
 			return nil
 		}
 	}
-	return fmt.Errorf("allowed values: %s", strings.Join(s.Flag.AllowedValues, ", "))
+	return fmt.Errorf("allowed values: %s", strings.Join(s.flag.AllowedValues, ", "))
 }
 
-func (s *StringEnum) Type() string {
+// Type is the type of Value. For more info, see:
+// https://godoc.org/github.com/spf13/pflag#Values
+func (s *stringEnum) Type() string {
 	return "string"
 }
 
 // addProjectFlagsToCommands adds the user flags to the specified Cobra commands.
-func addProjectFlagsToCommands(flags []*ProjectFlag, cmds ...*cobra.Command) {
-	ProjectFlagSet := flagsToFlagSet(flags)
+func addProjectFlagsToCommands(flags []*projectFlag, cmds ...*cobra.Command) {
+	if len(flags) == 0 {
+		return
+	}
+
+	projectFlagSet := flagsToFlagSet(flags)
 
 	for _, cmd := range cmds {
 		for _, flag := range flags {
@@ -99,12 +104,12 @@ func addProjectFlagsToCommands(flags []*ProjectFlag, cmds ...*cobra.Command) {
 		// Update help text for the command to include the user flags
 		helpTmpl := cmd.HelpTemplate()
 		helpTmpl += "\nUser flags:\n"
-		helpTmpl += ProjectFlagSet.FlagUsages()
+		helpTmpl += projectFlagSet.FlagUsages()
 
 		cmd.SetHelpTemplate(helpTmpl)
 
 		// Mark flag hidden so it doesn't appear in the normal help. We have to
-		// do this *after* calling FlagUsages above, otherwise the flags don't
+		// do this *after* calling flagUsages above, otherwise the flags don't
 		// appear in the output.
 		for _, flag := range flags {
 			cmd.Flags().MarkHidden(flag.Name)
@@ -112,44 +117,14 @@ func addProjectFlagsToCommands(flags []*ProjectFlag, cmds ...*cobra.Command) {
 	}
 }
 
-// Load the astro configuration file and read flags from the project config.
-func loadProjectFlagsFromConfig() ([]*ProjectFlag, error) {
-	findConfig := &cobra.Command{
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		FParseErrWhitelist: cobra.FParseErrWhitelist{
-			UnknownFlags: true,
-		},
-	}
-
-	// Strip the help options from os.Args so that the pre-loading of the
-	// config doesn't fail with pflag.ErrHelp
-	args := []string{}
-	for _, arg := range os.Args {
-		if arg == "-h" || arg == "--help" || arg == "-help" {
-			continue
-		}
-		args = append(args, arg)
-	}
-
-	// Do an early first parse of the config flag before the main command,
-	findConfig.PersistentFlags().StringVar(&userCfgFile, "config", "", "config file")
-	if err := findConfig.ParseFlags(args); err != nil {
-		return nil, err
-	}
-
-	config, err := currentConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return flagsFromConfig(config), nil
-}
-
-// flagsFromConfig reads the astro config and returns a list of ProjectFlags that
+// flagsFromConfig reads the astro config and returns a list of projectFlags that
 // can be used to fill in astro variable values at runtime.
-func flagsFromConfig(config *conf.Project) (flags []*ProjectFlag) {
-	flagMap := map[string]*ProjectFlag{}
+func flagsFromConfig(config *conf.Project) (flags []*projectFlag) {
+	if config == nil {
+		return
+	}
+
+	flagMap := map[string]*projectFlag{}
 
 	for _, moduleConf := range config.Modules {
 		for _, variableConf := range moduleConf.Variables {
@@ -170,7 +145,7 @@ func flagsFromConfig(config *conf.Project) (flags []*ProjectFlag) {
 				// aggregate values from all variables in the config
 				flag.AllowedValues = uniqueStrings(append(flag.AllowedValues, variableConf.Values...))
 			} else {
-				flag := &ProjectFlag{
+				flag := &projectFlag{
 					Name:          flagName,
 					Description:   flagConf.Description,
 					Variable:      variableConf.Name,
@@ -192,7 +167,7 @@ func flagsFromConfig(config *conf.Project) (flags []*ProjectFlag) {
 
 // Create an astro.UserVariables suitable for passing into ExecutionParameters
 // from the user flags.
-func flagsToUserVariables() *astro.UserVariables {
+func flagsToUserVariables(projectFlags []*projectFlag) *astro.UserVariables {
 	values := make(map[string]string)
 	filters := make(map[string]bool)
 
@@ -211,9 +186,9 @@ func flagsToUserVariables() *astro.UserVariables {
 	}
 }
 
-// Converts a list of ProjectFlags to a pflag.FlagSet.
-func flagsToFlagSet(flags []*ProjectFlag) *pflag.FlagSet {
-	flagSet := pflag.NewFlagSet("ProjectFlags", pflag.ContinueOnError)
+// Converts a list of projectFlags to a pflag.flagSet.
+func flagsToFlagSet(flags []*projectFlag) *pflag.FlagSet {
+	flagSet := pflag.NewFlagSet("projectFlags", pflag.ContinueOnError)
 	for _, flag := range flags {
 		flag.AddToFlagSet(flagSet)
 	}
@@ -221,17 +196,17 @@ func flagsToFlagSet(flags []*ProjectFlag) *pflag.FlagSet {
 }
 
 // flagName returns the flag name, given a variable name.
-func flagName(variableName string) string {
-	if flag, ok := _conf.Flags[variableName]; ok {
+func (cli *AstroCLI) flagName(variableName string) string {
+	if flag, ok := cli.config.Flags[variableName]; ok {
 		return flag.Name
 	}
 	return variableName
 }
 
 // varsToFlagNames converts a list of variable names to CLI flags.
-func varsToFlagNames(variableNames []string) (flagNames []string) {
+func (cli *AstroCLI) varsToFlagNames(variableNames []string) (flagNames []string) {
 	for _, v := range variableNames {
-		flagNames = append(flagNames, fmt.Sprintf("--%s", flagName(v)))
+		flagNames = append(flagNames, fmt.Sprintf("--%s", cli.flagName(v)))
 	}
 	return flagNames
 }

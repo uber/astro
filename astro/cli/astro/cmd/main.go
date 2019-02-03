@@ -20,84 +20,126 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/uber/astro/astro"
+	"github.com/uber/astro/astro/conf"
 	"github.com/uber/astro/astro/logger"
 
 	"github.com/spf13/cobra"
 )
 
-// CLI flags
-var (
-	trace        bool
-	userCfgFile  string
-	projectFlags []*ProjectFlag
-	verbose      bool
-)
-
-var rootCmd = &cobra.Command{
-	Use:           "astro",
-	Short:         "A tool for managing multiple Terraform modules.",
-	SilenceUsage:  true,
-	SilenceErrors: true,
+func init() {
+	// silence trace info from terraform/dag by default
+	log.SetOutput(ioutil.Discard)
 }
 
-func init() {
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().BoolVarP(&trace, "trace", "", false, "trace output")
-	rootCmd.PersistentFlags().StringVar(&userCfgFile, "config", "", "config file")
+// AstroCLI is the main CLI program, where flags and state are stored for the
+// running program.
+type AstroCLI struct {
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
 
-	// silence trace info from terraform/dag
-	log.SetOutput(ioutil.Discard)
+	project *astro.Project
+	config  *conf.Project
 
-	// Set trace
+	// these values are filled in based on runtime flags
+	flags struct {
+		detach            bool
+		moduleNamesString string
+		trace             bool
+		userCfgFile       string
+		verbose           bool
+
+		// projectFlags are special in that the actual flags are dynamic, based
+		// on the astro project configuration loaded.
+		projectFlags []*projectFlag
+	}
+
+	commands struct {
+		root  *cobra.Command
+		plan  *cobra.Command
+		apply *cobra.Command
+	}
+}
+
+// NewAstroCLI creates a new AstroCLI.
+func NewAstroCLI(opts ...Option) (*AstroCLI, error) {
+	cli := &AstroCLI{
+		stdin:  os.Stdin,
+		stdout: os.Stdout,
+		stderr: os.Stderr,
+	}
+
+	if err := cli.applyOptions(opts...); err != nil {
+		return nil, err
+	}
+
+	// Set up Cobra commands and structure
+	cli.commands.root = cli.createRootCommand()
+	cli.commands.plan = cli.createPlanCmd()
+	cli.commands.apply = cli.createApplyCmd()
+
+	cli.commands.root.AddCommand(
+		cli.commands.plan,
+		cli.commands.apply,
+	)
+
+	// Set trace. Note, this will turn tracing on for all instances of astro
+	// running in the same process, as the logger is a singleton. This should
+	// only be of concern during testing.
 	cobra.OnInitialize(func() {
-		if trace {
-			logger.Trace.SetOutput(os.Stderr)
+		if cli.flags.trace {
+			logger.Trace.SetOutput(cli.stderr)
+			log.SetOutput(cli.stderr)
 		}
 	})
+
+	return cli, nil
 }
 
-// Main is the main entry point into the CLI program.
-func Main() (exitCode int) {
-	var projectFlagsLoadErr error
+// Run is the main entry point into the CLI program.
+func (cli *AstroCLI) Run(args []string) (exitCode int) {
+	cli.commands.root.SetArgs(args)
+	cli.commands.root.SetOutput(cli.stderr)
 
-	// Try to parse user flags from their astro config file. Reading the astro
-	// config could fail with an error, e.g. if there is no config file found,
-	// but this is not a hard failure. Save the error for later, so we can let
-	// the user know about the error in certain cases.
-	projectFlags, projectFlagsLoadErr = loadProjectFlagsFromConfig()
-	if projectFlags != nil && len(projectFlags) > 0 {
-		addProjectFlagsToCommands(projectFlags, applyCmd, planCmd)
-	}
-
-	rc := 0
-
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-
-		if projectFlagsLoadErr != nil && strings.Contains(err.Error(), "unknown flag") {
-			printConfigLoadingError(projectFlagsLoadErr)
+	userSpecifiedConfigFile := configPathFromArgs(args)
+	if userSpecifiedConfigFile != "" {
+		if err := cli.loadConfig(userSpecifiedConfigFile); err != nil {
+			fmt.Fprintln(cli.stderr, err.Error())
+			return 1
 		}
-
-		// exit with error
-		rc = 1
 	}
 
-	// If there was an error when parsing the user's project config file,
-	// then display a message to let them know in case they're wondering
-	// why their CLI flags are not showing up.
-	if projectFlagsLoadErr != nil && projectFlagsLoadErr != errCannotFindConfig {
-		printConfigLoadingError(projectFlagsLoadErr)
+	cli.configureDynamicUserFlags()
+
+	if err := cli.commands.root.Execute(); err != nil {
+		fmt.Fprintln(cli.stderr, err.Error())
+		exitCode = 1 // exit with error
+
+		// If we get an unknown flag, it could be because the user expected
+		// config to be loaded but it wasn't. Display a message to the user to
+		// let them know.
+		if cli.config == nil && strings.Contains(err.Error(), "unknown flag") {
+			fmt.Fprintln(cli.stderr, "NOTE: No astro config was loaded.")
+		}
 	}
 
-	return rc
+	return exitCode
 }
 
-func printConfigLoadingError(e error) {
-	fmt.Fprintf(os.Stderr, "\nNOTE: There was an error loading astro config:\n")
-	fmt.Fprintln(os.Stderr, e.Error())
+// configureDynamicUserFlags dynamically adds Cobra flags based on the loaded
+// configuration.
+func (cli *AstroCLI) configureDynamicUserFlags() {
+	projectFlags := flagsFromConfig(cli.config)
+	addProjectFlagsToCommands(projectFlags,
+		cli.commands.plan,
+		cli.commands.apply,
+	)
+	cli.flags.projectFlags = projectFlags
 }
