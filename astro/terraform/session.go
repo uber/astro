@@ -23,10 +23,10 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	version "github.com/burl/go-version"
 	"github.com/uber/astro/astro/exec2"
 	"github.com/uber/astro/astro/logger"
 	"github.com/uber/astro/astro/utils"
-	version "github.com/burl/go-version"
 )
 
 // Session is a wrapper around Terraform commands. It ensures that all
@@ -106,9 +106,9 @@ func (s *Session) command(logfileName string, cmd string, args []string, expecte
 	}
 
 	return exec2.NewProcess(exec2.Cmd{
-		Command: cmd,
-		Args:    args,
-		Env:     env,
+		Command:               cmd,
+		Args:                  args,
+		Env:                   env,
 		CombinedOutputLogFile: filepath.Join(s.logDir, fmt.Sprintf("%s.log", logfileName)),
 		ExpectedSuccessCodes:  expectedSuccessCodes,
 		WorkingDir:            s.moduleDir,
@@ -148,7 +148,7 @@ func cloneTree(existingPath string, newPath string) error {
 		"!", "-name", "terraform.tfstate*",
 	)
 	find.Dir = existingPathDeref
-	cpio := exec.Command("cpio", "-pl", newPathDeref)
+	cpio := exec.Command("cpio", "-pL", newPathDeref)
 	cpio.Dir = existingPathDeref
 
 	cpio.Stdin, err = find.StdoutPipe()
