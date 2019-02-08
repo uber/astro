@@ -71,15 +71,6 @@ func (cli *AstroCLI) createPlanCmd() *cobra.Command {
 
 func (cli *AstroCLI) preRun(cmd *cobra.Command, args []string) error {
 	logger.Trace.Println("cli: in preRun")
-	logger.Trace.Printf("cli: preRun args: %s\n", args)
-
-	// If a user specified config has not been loaded, try to autodiscover the
-	// config file.
-	if cli.config == nil {
-		if err := cli.loadConfig(cli.resolveConfigFilePath()); err != nil {
-			return err
-		}
-	}
 
 	// Load astro from config
 	project, err := astro.NewProject(astro.WithConfig(*cli.config))

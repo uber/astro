@@ -108,12 +108,24 @@ func (cli *AstroCLI) Run(args []string) (exitCode int) {
 	cli.commands.root.SetArgs(args)
 	cli.commands.root.SetOutput(cli.stderr)
 
-	userSpecifiedConfigFile := configPathFromArgs(args)
-	if userSpecifiedConfigFile != "" {
-		if err := cli.loadConfig(userSpecifiedConfigFile); err != nil {
+	userProvidedConfigPath, err := configPathFromArgs(args)
+	if err != nil {
+		fmt.Fprintln(cli.stderr, err.Error())
+		return 1
+	}
+
+	configFilePath := firstExistingFilePath(
+		append([]string{userProvidedConfigPath}, configFileSearchPaths...)...,
+	)
+
+	if configFilePath != "" {
+		config, err := astro.NewConfigFromFile(configFilePath)
+		if err != nil {
 			fmt.Fprintln(cli.stderr, err.Error())
 			return 1
 		}
+
+		cli.config = config
 	}
 
 	cli.configureDynamicUserFlags()
