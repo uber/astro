@@ -18,6 +18,8 @@ package terraform
 
 import (
 	"fmt"
+
+	"github.com/uber/astro/astro/logger"
 )
 
 // Plan runs a `terraform plan`
@@ -31,11 +33,30 @@ func (s *Session) Plan() (Result, error) {
 	args := []string{"plan", "-detailed-exitcode", fmt.Sprintf("-out=%s.plan", s.id)}
 
 	for key, val := range s.config.Variables {
-		args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
+		logger.Trace.Println("key: %s", key)
+		logger.Trace.Println("value: %s", val)
+
+		if key != "workspace" {
+			args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
+		} else if key == "workspace" {
+			logger.Trace.Println("checking out workspace: %s", val)
+			process, err := s.terraformCommand([]string{"workspace", "select", val}, []int{0})
+
+			if err != nil {
+				return nil, err
+			}
+
+			if err := process.Run(); err != nil {
+				return &terraformResult{
+					process: process,
+				}, err
+			}
+		}
 	}
 
 	args = append(args, s.config.TerraformParameters...)
 
+	logger.Trace.Println("args: %s", args)
 	process, err := s.terraformCommand(args, []int{0, 2})
 	if err != nil {
 		return nil, err

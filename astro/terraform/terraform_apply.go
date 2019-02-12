@@ -18,6 +18,8 @@ package terraform
 
 import (
 	"fmt"
+
+	"github.com/uber/astro/astro/logger"
 )
 
 // Apply runs a `terraform apply`
@@ -40,7 +42,22 @@ func (s *Session) Apply() (Result, error) {
 	}
 
 	for key, val := range s.config.Variables {
-		args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
+		if key != "workspace" {
+			args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
+		} else if key == "workspace" {
+			logger.Trace.Println("checking out workspace: %s", val)
+			process, err := s.terraformCommand([]string{"workspace", "select", val}, []int{0})
+
+			if err != nil {
+				return nil, err
+			}
+
+			if err := process.Run(); err != nil {
+				return &terraformResult{
+					process: process,
+				}, err
+			}
+		}
 	}
 
 	args = append(args, s.config.TerraformParameters...)
