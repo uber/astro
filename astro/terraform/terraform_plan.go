@@ -33,9 +33,6 @@ func (s *Session) Plan() (Result, error) {
 	args := []string{"plan", "-detailed-exitcode", fmt.Sprintf("-out=%s.plan", s.id)}
 
 	for key, val := range s.config.Variables {
-		logger.Trace.Println("key: %s", key)
-		logger.Trace.Println("value: %s", val)
-
 		if key != "workspace" {
 			args = append(args, "-var", fmt.Sprintf("%s=%s", key, val))
 		} else if key == "workspace" {
@@ -56,7 +53,6 @@ func (s *Session) Plan() (Result, error) {
 
 	args = append(args, s.config.TerraformParameters...)
 
-	logger.Trace.Println("args: %s", args)
 	process, err := s.terraformCommand(args, []int{0, 2})
 	if err != nil {
 		return nil, err
