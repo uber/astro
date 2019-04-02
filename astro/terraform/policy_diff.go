@@ -40,8 +40,8 @@ var (
 	}
 	newline = []byte("\n")
 	// regular expressions that matches a policy add/change in a Terraform diff.
-	terraformPolicyAddLine    = regexp.MustCompile(`\s*policy:\s+"(.*)"`)
-	terraformPolicyChangeLine = regexp.MustCompile(`\s*policy:\s+"(.*)" => "(.*)"`)
+	terraformPolicyAddLine    = regexp.MustCompile(`^(.*\b(?:assume_role_policy|policy):\s+)"(.*)"`)
+	terraformPolicyChangeLine = regexp.MustCompile(`^(.*\b(?:assume_role_policy|policy):\s+)"(.*)" => "(.*)"`)
 )
 
 func init() {
@@ -103,12 +103,16 @@ func jsonPretty(in []byte) ([]byte, error) {
 	if len(in) == 0 {
 		return in, nil
 	}
-	var out bytes.Buffer
-	err := json.Indent(&out, in, "", "  ")
+	var unmarshalled interface{}
+	err := json.Unmarshal(in, &unmarshalled)
 	if err != nil {
 		return nil, err
 	}
-	return out.Bytes(), nil
+	out, err := json.MarshalIndent(unmarshalled, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // CanDisplayReadableTerraformPolicyChanges is true when the prerequisites for
@@ -134,10 +138,13 @@ func readableTerraformPolicyChangesWithDiffer(differ, terraformChanges string) (
 		// Get a readable diff from the policy change
 		var difftext []byte
 		var err error
+		var fieldName string
 		if changeGroups != nil {
-			difftext, err = terraformPolicyChangeToDiff(differ, changeGroups[1], changeGroups[2])
+			fieldName = changeGroups[1]
+			difftext, err = terraformPolicyChangeToDiff(differ, changeGroups[2], changeGroups[3])
 		} else {
-			difftext, err = terraformPolicyChangeToDiff(differ, "", addGroups[1])
+			fieldName = addGroups[1]
+			difftext, err = terraformPolicyChangeToDiff(differ, "", addGroups[2])
 		}
 		if err != nil {
 			errs = multierror.Append(errs, err)
@@ -147,9 +154,15 @@ func readableTerraformPolicyChangesWithDiffer(differ, terraformChanges string) (
 		}
 
 		// Output a readable diff
-		result += "\n"
-		result += string(tail(difftext, 2, true))
-		result += "\n"
+		if len(difftext) > 0 {
+			result += fieldName
+			result += "\n"
+			result += string(tail(difftext, 2, true))
+			result += "\n"
+		} else {
+			result += fieldName
+			result += "<no changes after normalization>\n"
+		}
 	}
 
 	return result, errs

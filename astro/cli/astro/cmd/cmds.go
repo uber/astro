@@ -27,6 +27,7 @@ import (
 
 var (
 	detach            bool
+	disablePolicyDiff bool
 	moduleNamesString string
 )
 
@@ -60,7 +61,7 @@ var applyCmd = &cobra.Command{
 			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
-		err = printExecStatus(status, results)
+		err = printExecStatus(status, results, disablePolicyDiff)
 		if err != nil {
 			return fmt.Errorf("Done; there were errors; some modules may not have been applied")
 		}
@@ -102,7 +103,7 @@ var planCmd = &cobra.Command{
 			return fmt.Errorf("ERROR: %v", processError(err))
 		}
 
-		err = printExecStatus(status, results)
+		err = printExecStatus(status, results, disablePolicyDiff)
 		if err != nil {
 			return errors.New("Done; there were errors")
 		}
@@ -119,6 +120,7 @@ func init() {
 
 	planCmd.PersistentFlags().BoolVar(&detach, "detach", false, "disconnect remote state before planning")
 	planCmd.PersistentFlags().StringVar(&moduleNamesString, "modules", "", "list of modules to plan")
+	planCmd.PersistentFlags().BoolVar(&disablePolicyDiff, "no-policy-diff", false, "do not show policy changes as diffs")
 	rootCmd.AddCommand(planCmd)
 }
 
