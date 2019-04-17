@@ -52,7 +52,7 @@ func NewProjectFromConfigFile(configFilePath string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewProject(*config)
+	return NewProject(WithConfig(*config))
 }
 
 // NewProjectFromYAML creates a new Project based on the specified YAML
@@ -63,7 +63,7 @@ func NewProjectFromYAML(yamlBytes []byte) (*Project, error) {
 		return nil, err
 	}
 
-	return NewProject(*config)
+	return NewProject(WithConfig(*config))
 }
 
 // configFromYAML takes YAML bytes and returns a Project configuration

@@ -2,6 +2,9 @@
 
 ## 0.5.0 (UNRELEASED, 2018)
 
+* Adopt options pattern for `astro.NewProject` constructor (#26)
+* Refactor and improve integration tests to invoke them directly using cli
+  rather than `os.exec` (#26)
 * Add Travis configuration, `make lint` and git precommit hook
 * Fix `--help` displaying "pflag: help requested" (#1)
 * Fix issue with make not recompiling when source files changed
@@ -22,6 +25,13 @@
   This has been removed and there is now a completely new section in the YAML
   called "flags". See the "Remapping flags" section of the README for more
   information.
+
+* API: The signature of `astro.NewProject` has changed to now accept a list of
+  functional options. This allows us to add new options in the future without
+  making a breaking change.
+
+  `astro.NewProject(conf)` should be changed to:
+  `astro.NewProject(astro.WithConfig(conf))`
 
 ## 0.4.1 (October 3, 2018)
 

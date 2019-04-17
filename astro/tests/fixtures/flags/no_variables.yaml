@@ -1,0 +1,8 @@
+---
+
+terraform:
+  path: ../../../../../fixtures/mock-terraform/success
+
+modules:
+  - name: foo
+    path: .

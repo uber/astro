@@ -20,52 +20,61 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/uber/astro/astro/tests"
 )
 
+func TestHelpWorks(t *testing.T) {
+	result := tests.RunTest(t, []string{"--help"}, "fixtures/no-config", tests.VERSION_LATEST)
+	assert.Contains(t, result.Stderr.String(), "A tool for managing multiple Terraform modules")
+	assert.Equal(t, 0, result.ExitCode)
+}
 func TestHelpUserFlags(t *testing.T) {
-	result := runTest(t, []string{
-		"--config=simple_variables.yaml",
+	result := tests.RunTest(t, []string{
 		"plan",
 		"--help",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.Contains(t, result.Stdout.String(), "User flags:")
-	assert.Contains(t, result.Stdout.String(), "--foo")
-	assert.Contains(t, result.Stdout.String(), "--baz")
-	assert.Contains(t, result.Stdout.String(), "Baz Description")
-	assert.Contains(t, result.Stdout.String(), "--qux")
+	}, "fixtures/config-simple", tests.VERSION_LATEST)
+	assert.Contains(t, result.Stderr.String(), "User flags:")
+	assert.Contains(t, result.Stderr.String(), "--foo")
+	assert.Contains(t, result.Stderr.String(), "--baz")
+	assert.Contains(t, result.Stderr.String(), "Baz Description")
+	assert.Contains(t, result.Stderr.String(), "--qux")
 }
 
 func TestHelpNoUserFlags(t *testing.T) {
-	result := runTest(t, []string{
+	result := tests.RunTest(t, []string{
 		"--config=no_variables.yaml",
 		"plan",
 		"--help",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.NotContains(t, result.Stdout.String(), "User flags:")
+	}, "fixtures/flags", tests.VERSION_LATEST)
+	assert.NotContains(t, result.Stderr.String(), "User flags:")
 }
 
-func TestHelpShowsConfigLoadError(t *testing.T) {
-	result := runTest(t, []string{
+func TestConfigLoadErrorWhenSpecified(t *testing.T) {
+	result := tests.RunTest(t, []string{
 		"--config=/nonexistent/path/to/config",
 		"plan",
 		"--help",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.Contains(t, result.Stderr.String(), "There was an error loading astro config")
+	}, "fixtures/config-simple", tests.VERSION_LATEST)
+	assert.Contains(t, result.Stderr.String(), "file does not exist")
+	assert.Equal(t, 1, result.ExitCode)
 }
 
-func TestHelpDoesntAlwaysShowLoadingError(t *testing.T) {
-	result := runTest(t, []string{
-		"--help",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.NotContains(t, result.Stderr.String(), "There was an error loading astro config")
+func TestUnknownFlag(t *testing.T) {
+	result := tests.RunTest(t, []string{
+		"plan",
+		"--foo",
+		"bar",
+	}, "fixtures/flags", tests.VERSION_LATEST)
+	assert.Contains(t, result.Stderr.String(), "No astro config was loaded")
+	assert.Equal(t, 1, result.ExitCode)
 }
 
 func TestPlanErrorOnMissingValues(t *testing.T) {
-	result := runTest(t, []string{
-		"--config=simple_variables.yaml",
+	result := tests.RunTest(t, []string{
 		"plan",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.Error(t, result.Err)
+	}, "fixtures/config-simple", tests.VERSION_LATEST)
+	assert.Equal(t, 1, result.ExitCode)
 	assert.Contains(t, result.Stderr.String(), "missing required flags")
 	assert.Contains(t, result.Stderr.String(), "--foo")
 	assert.Contains(t, result.Stderr.String(), "--baz")
@@ -80,25 +89,25 @@ func TestPlanAllowedValues(t *testing.T) {
 	}
 	for _, env := range tt {
 		t.Run(env, func(t *testing.T) {
-			result := runTest(t, []string{
+			result := tests.RunTest(t, []string{
 				"--config=merge_values.yaml",
 				"plan",
 				"--environment",
 				env,
-			}, "fixtures/flags", VERSION_LATEST)
-			assert.NoError(t, result.Err)
+			}, "fixtures/flags", tests.VERSION_LATEST)
+			assert.Equal(t, 0, result.ExitCode)
 		})
 	}
 }
 
 func TestPlanFailOnNotAllowedValue(t *testing.T) {
-	result := runTest(t, []string{
+	result := tests.RunTest(t, []string{
 		"--config=merge_values.yaml",
 		"plan",
 		"--environment",
 		"foo",
-	}, "fixtures/flags", VERSION_LATEST)
-	assert.Error(t, result.Err)
+	}, "fixtures/flags", tests.VERSION_LATEST)
+	assert.Equal(t, 1, result.ExitCode)
 	assert.Contains(t, result.Stderr.String(), "invalid argument")
 	assert.Contains(t, result.Stderr.String(), "allowed values")
 }

@@ -45,37 +45,34 @@ type Project struct {
 }
 
 // NewProject returns a new instance of Project.
-func NewProject(config conf.Project) (*Project, error) {
+func NewProject(opts ...Option) (*Project, error) {
+	project := &Project{}
+
 	logger.Trace.Println("astro: initializing")
 
-	project := &Project{}
+	if err := project.applyOptions(opts...); err != nil {
+		return nil, err
+	}
 
 	versionRepo, err := tvm.NewVersionRepoForCurrentSystem("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize tvm: %v", err)
 	}
+	project.terraformVersions = versionRepo
 
-	sessionRepoPath := filepath.Join(config.SessionRepoDir, ".astro")
+	sessionRepoPath := filepath.Join(project.config.SessionRepoDir, ".astro")
 	sessions, err := NewSessionRepo(project, sessionRepoPath, utils.ULIDString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize session repository: %v", err)
 	}
-
-	project.config = &config
 	project.sessions = sessions
-	project.terraformVersions = versionRepo
-
-	// validate config
-	if errs := project.config.Validate(); errs != nil {
-		return nil, errs
-	}
 
 	// check dependency graph is all good
 	if _, err := project.executions(NoExecutionParameters()).graph(); err != nil {
 		return nil, err
 	}
 
-	if config.Hooks.Startup == nil {
+	if project.config.Hooks.Startup == nil {
 		return project, nil
 	}
 
@@ -83,7 +80,7 @@ func NewProject(config conf.Project) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, hook := range config.Hooks.Startup {
+	for _, hook := range project.config.Hooks.Startup {
 		if err := runCommandkAndSetEnvironment(session.path, hook); err != nil {
 			return nil, fmt.Errorf("error running Startup hook: %v", err)
 		}

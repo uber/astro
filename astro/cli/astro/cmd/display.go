@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 
 	"github.com/uber/astro/astro"
-	"github.com/uber/astro/astro/logger"
 	"github.com/uber/astro/astro/terraform"
 
 	"github.com/hashicorp/go-multierror"
@@ -32,14 +30,14 @@ import (
 
 // printExecStatus takes channels for status updates and exec results
 // and prints them on screen as they arrive.
-func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors error) {
+func (cli *AstroCLI) printExecStatus(status <-chan string, results <-chan *astro.Result) (errors error) {
 	// Print status updates to stdout as they arrive
 	if status != nil {
 		go func() {
 			var out io.Writer
 
-			if verbose {
-				out = os.Stdout
+			if cli.flags.verbose {
+				out = cli.stdout
 			} else {
 				out = ioutil.Discard
 			}
@@ -52,7 +50,7 @@ func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors
 
 	for result := range results {
 		var resultType, changesInfo, runtimeInfo string
-		var out = os.Stdout
+		var out = cli.stdout
 
 		// If this was an error, append it to the list of errors to
 		// return.
@@ -69,7 +67,7 @@ func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors
 			resultType = aurora.Green("OK").String()
 		} else {
 			resultType = aurora.Red("ERROR").String()
-			out = os.Stderr
+			out = cli.stderr
 		}
 
 		// If this is a plan, show whether it has changes or not
@@ -109,7 +107,6 @@ func printExecStatus(status <-chan string, results <-chan *astro.Result) (errors
 
 		// If there is a stderr, print it
 		if terraformResult != nil {
-			logger.Trace.Println("cli: printing stderr from terraform result:")
 			fmt.Fprintf(out, terraformResult.Stderr())
 		}
 

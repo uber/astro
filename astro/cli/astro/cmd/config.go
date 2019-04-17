@@ -17,11 +17,9 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/uber/astro/astro"
-	"github.com/uber/astro/astro/conf"
+	"github.com/spf13/cobra"
 	"github.com/uber/astro/astro/utils"
 )
 
@@ -34,13 +32,42 @@ var configFileSearchPaths = []string{
 	"terraform/astro.yml",
 }
 
-var errCannotFindConfig = errors.New("unable to find config file")
+// configPathFromArgs reads the command line arguments and returns the value of
+// the config option. It returns an empty string if there is no path in the
+// args.
+func configPathFromArgs(args []string) (configFilePath string, err error) {
+	// this is a special cobra command so that we can parse just the config
+	// flag early in the program lifecycle.
+	findConfig := &cobra.Command{
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		FParseErrWhitelist: cobra.FParseErrWhitelist{
+			UnknownFlags: true,
+		},
+	}
 
-// Global cache
-var (
-	_conf    *conf.Project
-	_project *astro.Project
-)
+	// Strip the help options from args so that the pre-loading of the config
+	// doesn't fail with pflag.ErrHelp
+	finalArgs := []string{}
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" || arg == "-help" {
+			continue
+		}
+		finalArgs = append(finalArgs, arg)
+	}
+
+	// Do an early first parse of the config flag before the main command,
+	findConfig.PersistentFlags().StringVar(&configFilePath, "config", "", "config file")
+	if err := findConfig.ParseFlags(finalArgs); err != nil {
+		return "", err
+	}
+
+	if configFilePath != "" && !utils.FileExists(configFilePath) {
+		return "", fmt.Errorf("%v: file does not exist", configFilePath)
+	}
+
+	return configFilePath, nil
+}
 
 // firstExistingFilePath takes a list of paths and returns the first one
 // where a file exists (or symlink to a file).
@@ -51,55 +78,4 @@ func firstExistingFilePath(paths ...string) string {
 		}
 	}
 	return ""
-}
-
-// configFile returns the path of the project config file.
-func configFile() (string, error) {
-	// User provided config file path takes precedence
-	if userCfgFile != "" {
-		return userCfgFile, nil
-	}
-
-	// Try to find the config file
-	if path := firstExistingFilePath(configFileSearchPaths...); path != "" {
-		return path, nil
-	}
-
-	return "", errCannotFindConfig
-}
-
-// currentConfig loads configuration or returns the previously loaded config.
-func currentConfig() (*conf.Project, error) {
-	if _conf != nil {
-		return _conf, nil
-	}
-
-	file, err := configFile()
-	if err != nil {
-		return nil, err
-	}
-	_conf, err = astro.NewConfigFromFile(file)
-
-	return _conf, err
-}
-
-// currentProject creates a new astro project or returns the previously created
-// astro project.
-func currentProject() (*astro.Project, error) {
-	if _project != nil {
-		return _project, nil
-	}
-
-	config, err := currentConfig()
-	if err != nil {
-		return nil, err
-	}
-	c, err := astro.NewProject(*config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to load module configuration: %v", err)
-	}
-
-	_project = c
-
-	return _project, nil
 }

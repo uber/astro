@@ -1,0 +1,9 @@
+---
+
+modules:
+  - name: foo
+    path: .
+    remote:
+      backend: local
+      backend_config:
+        path: /tmp/terraform-tests/plan-success-nochanges/local-backend/foo.tfstate
