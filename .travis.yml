@@ -7,6 +7,9 @@ env:
   - GO111MODULE=on
 go:
  - "1.11.x"
+before_script:
+- "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
 script:
 - make lint
 - make test
+- fossa
