@@ -27,10 +27,10 @@ import (
 
 func TestErrorDisplay(t *testing.T) {
 	result := tests.RunTest(t, []string{"plan"}, "fixtures/plan-error", tests.VERSION_LATEST)
+
 	re := regexp.MustCompile("There are some problems with the configuration")
 	matches := re.FindAllString(result.Stderr.String(), -1)
 
 	// Test that the error is only printed once
 	assert.Exactly(t, 1, len(matches))
-	assert.Equal(t, 0, result.ExitCode)
 }
