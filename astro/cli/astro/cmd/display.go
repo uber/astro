@@ -108,9 +108,7 @@ func (cli *AstroCLI) printExecStatus(status <-chan string, results <-chan *astro
 		// If there is a stderr, print it
 		if terraformResult != nil {
 			fmt.Fprintf(out, terraformResult.Stderr())
-		}
-
-		if result.Err() != nil {
+		} else if result.Err() != nil {
 			fmt.Fprintln(out, result.Err())
 		}
 	}

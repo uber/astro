@@ -11,6 +11,7 @@
 * Fix issue with `make test` always returning true even when tests fail
 * Fix race condition that could cause failures due to astro downloading the
   same version of Terraform twice
+* Fix module execution errors being printed to the console twice
 * Remove godep and move to Go modules (vgo)
 * Change configuration syntax for remapping CLI flags to Terraform module
   variables
