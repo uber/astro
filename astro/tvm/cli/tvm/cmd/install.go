@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/uber/astro/astro/tvm"
-
-	"github.com/spf13/cobra"
 )
 
 // defaultInstallPath is the path that the Terraform binary will be
