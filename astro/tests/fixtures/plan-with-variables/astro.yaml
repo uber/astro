@@ -1,0 +1,18 @@
+---
+
+modules:
+  - name: foo
+    path: ./foo 
+    remote:
+      backend: local
+      backend_config:
+        path: /tmp/terraform-tests/foo.tfstate
+
+  - name: bar
+    path: ./bar
+    remote:
+      backend: local
+      backend_config:
+        path: /tmp/terraform-tests/bar.tfstate
+    variables:
+      - name: region
