@@ -141,3 +141,16 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 		})
 	}
 }
+
+// TestVariablePassing checks that variables are passed to the modules that declare them and
+// not passed to the modules that don't
+func TestVariablePassing(t *testing.T) {
+	for _, version := range terraformVersionsToTest {
+		t.Run(version, func(t *testing.T) {
+			result := RunTest(t, []string{"plan", "--trace", "--region", "east1"}, "fixtures/plan-with-variables", version)
+			assert.Contains(t, result.Stderr.String(), "-out=foo.plan]")
+			assert.Contains(t, result.Stderr.String(), "-out=bar-east1.plan -var region=east1]")
+			assert.Equal(t, 0, result.ExitCode)
+		})
+	}
+}
