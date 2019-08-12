@@ -137,6 +137,7 @@ type unboundExecution struct {
 // boundExecution with variable values replaced. An error is returned if
 // not all required user values were provided.
 func (e *unboundExecution) bind(userVars map[string]string) (*boundExecution, error) {
+
 	// boundVars is the map of execution variables bound to the values provided by user
 	boundVars := make(map[string]string)
 

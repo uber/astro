@@ -52,5 +52,5 @@ lint:
 
 .PHONY: test
 test:
-	go test -timeout 1m -coverprofile=.coverage.out ./... \
+	go test -timeout 5m -coverprofile=.coverage.out ./... \
 		|grep -v -E '^\?'
