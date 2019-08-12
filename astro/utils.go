@@ -52,16 +52,3 @@ func filterMaps(a, b map[string]string) bool {
 	}
 	return true
 }
-
-// union takes a series of maps and returns a new map which is a union of all
-// of them.
-func union(maps ...map[string]string) (result map[string]string) {
-	result = make(map[string]string)
-	for _, m := range maps {
-		for k, v := range m {
-			result[k] = v
-		}
-
-	}
-	return result
-}
