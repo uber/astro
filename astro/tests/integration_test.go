@@ -25,7 +25,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uber/astro/astro/terraform"
 )
 
 // getSessionDirs returns a list of the sessions inside a session repository.
@@ -96,11 +95,7 @@ func TestProjectPlanError(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			result := RunTest(t, []string{"plan"}, "fixtures/plan-error", version)
 			assert.Contains(t, result.Stderr.String(), "foo: [31mERROR")
-			errorMessage := "Error parsing"
-			if terraform.StringVersionMatches(version, ">=0.12") {
-				errorMessage = "Argument or block definition required"
-			}
-			assert.Contains(t, result.Stderr.String(), errorMessage)
+			assert.Contains(t, result.Stderr.String(), "Error parsing")
 			assert.Equal(t, 1, result.ExitCode)
 		})
 	}
