@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/uber/astro/astro/terraform"
 )
 
 // getSessionDirs returns a list of the sessions inside a session repository.
@@ -95,7 +96,11 @@ func TestProjectPlanError(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			result := RunTest(t, []string{"plan"}, "fixtures/plan-error", version)
 			assert.Contains(t, result.Stderr.String(), "foo: [31mERROR")
-			assert.Contains(t, result.Stderr.String(), "Error parsing")
+			errorMessage := "Error parsing"
+			if terraform.StringVersionMatches(version, ">=0.12") {
+				errorMessage = "Argument or block definition required"
+			}
+			assert.Contains(t, result.Stderr.String(), errorMessage)
 			assert.Equal(t, 1, result.ExitCode)
 		})
 	}
@@ -121,19 +126,6 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 
 			_, err = os.Stat(filepath.Join("/tmp/terraform-tests/plan-detach/.astro", sessionDirs[0], "foo/sandbox/terraform.tfstate"))
 			assert.NoError(t, err)
-		})
-	}
-}
-
-// TestVariablePassing checks that variables are passed to the modules that declare them and
-// not passed to the modules that don't
-func TestVariablePassing(t *testing.T) {
-	for _, version := range terraformVersionsToTest {
-		t.Run(version, func(t *testing.T) {
-			result := RunTest(t, []string{"plan", "--trace", "--region", "east1"}, "fixtures/plan-with-variables", version)
-			assert.Contains(t, result.Stderr.String(), "-out=foo.plan]")
-			assert.Contains(t, result.Stderr.String(), "-out=bar-east1.plan -var region=east1]")
-			assert.Equal(t, 0, result.ExitCode)
 		})
 	}
 }

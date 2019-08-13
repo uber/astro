@@ -237,3 +237,33 @@ func TestApplyFailModule(t *testing.T) {
 		assert.NoError(t, results[id])
 	}
 }
+
+// Tests that variables are passed to the modules that declare them and not
+// passed to the modules that didn't
+func TestPassVariables(t *testing.T) {
+	t.Parallel()
+
+	c, err := NewProjectFromConfigFile("fixtures/test-pass-variables/astro.yaml")
+	require.NoError(t, err)
+
+	c.config.TerraformDefaults.Path = absolutePath("fixtures/mock-terraform/success")
+
+	_, resultChan, err := c.Plan(PlanExecutionParameters{
+		ExecutionParameters: ExecutionParameters{
+			UserVars: &UserVariables{
+				Values: map[string]string{
+					"region": "east1",
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	results := testReadResults(resultChan)
+
+	// Mocked terraform prints parameters it was called with to stderr.
+	// Check that variables were passed to the module that declared it and not
+	// passed to the one that didn't.
+	assert.Contains(t, results["bar-east1"].TerraformResult().Stderr(), "-var region=east1")
+	assert.NotContains(t, results["foo"].TerraformResult().Stderr(), "-var")
+}
