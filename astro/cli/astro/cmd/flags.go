@@ -140,17 +140,17 @@ func flagsFromConfig(config *conf.Project) (flags []*projectFlag) {
 			} else {
 				flagName = variableConf.Name
 			}
-
 			if flag, ok := flagMap[flagName]; ok {
 				// aggregate values from all variables in the config
 				flag.AllowedValues = uniqueStrings(append(flag.AllowedValues, variableConf.Values...))
 			} else {
 				flag := &projectFlag{
-					Name:          flagName,
-					Description:   flagConf.Description,
-					Variable:      variableConf.Name,
-					AllowedValues: variableConf.Values,
+					Name:        flagName,
+					Description: flagConf.Description,
+					Variable:    variableConf.Name,
 				}
+				flag.AllowedValues = make([]string, len(variableConf.Values))
+				copy(flag.AllowedValues, variableConf.Values)
 
 				flagMap[variableConf.Name] = flag
 			}

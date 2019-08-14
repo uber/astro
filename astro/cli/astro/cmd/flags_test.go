@@ -87,6 +87,12 @@ func TestPlanAllowedValues(t *testing.T) {
 		"staging",
 		"prod",
 	}
+	expectedModules := map[string][]string{
+		"dev":     []string{"misc-dev", "test_env-dev"},
+		"mgmt":    []string{"foo_mgmt-mgmt"},
+		"staging": []string{"misc-staging", "test_env-staging"},
+		"prod":    []string{"misc-prod"},
+	}
 	for _, env := range tt {
 		t.Run(env, func(t *testing.T) {
 			result := tests.RunTest(t, []string{
@@ -95,6 +101,11 @@ func TestPlanAllowedValues(t *testing.T) {
 				"--environment",
 				env,
 			}, "fixtures/flags", tests.VERSION_LATEST)
+			// Check that all expected modules were planned for environment env
+			for _, module := range expectedModules[env] {
+				assert.Contains(t, result.Stdout.String(), module)
+			}
+
 			assert.Equal(t, 0, result.ExitCode)
 		})
 	}

@@ -4,17 +4,17 @@ terraform:
   path: ../../../../../fixtures/mock-terraform/success
 
 modules:
-  - name: foo_mgmt
-    path: .
-    variables:
-      - name: environment
-        values: [mgmt]
-
   - name: misc
     path: .
     variables:
       - name: environment
         values: [dev, staging, prod]
+
+  - name: foo_mgmt
+    path: .
+    variables:
+      - name: environment
+        values: [mgmt]
 
   - name: test_env
     path: .
