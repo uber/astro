@@ -31,9 +31,3 @@ func VersionMatches(v *version.Version, versionConstraint string) bool {
 	}
 	return constraint.Check(v)
 }
-
-// StringVersionMatches returns whether or not the version passed as string matches the constraint.
-// See VersionMatches for more info.
-func StringVersionMatches(v string, versionConstraint string) bool {
-	return VersionMatches(version.Must(version.NewVersion(v)), versionConstraint)
-}
