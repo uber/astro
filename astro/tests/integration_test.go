@@ -26,6 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/uber/astro/astro/terraform"
+
+	version "github.com/burl/go-version"
 )
 
 // getSessionDirs returns a list of the sessions inside a session repository.
@@ -51,6 +53,12 @@ func getSessionDirs(sessionBaseDir string) ([]string, error) {
 	}
 
 	return sessionDirs, nil
+}
+
+// stringVersionMatches returns whether or not the version passed as string matches the constraint.
+// See terraform.VersionMatches for more info.
+func stringVersionMatches(v string, versionConstraint string) bool {
+	return terraform.VersionMatches(version.Must(version.NewVersion(v)), versionConstraint)
 }
 
 func TestProjectApplyChangesSuccess(t *testing.T) {
@@ -86,7 +94,7 @@ func TestProjectPlanSuccessChanges(t *testing.T) {
 			result := RunTest(t, []string{"plan"}, "fixtures/plan-success-changes", version)
 			assert.Contains(t, result.Stdout.String(), "foo: [32mOK[0m[33m Changes[0m[37m")
 			addedResourceRe := `\+.*null_resource.foo`
-			if terraform.StringVersionMatches(version, ">=0.12") {
+			if stringVersionMatches(version, ">=0.12") {
 				addedResourceRe = `null_resource.foo.*will be created`
 			}
 			assert.Regexp(t, addedResourceRe, result.Stdout.String())
@@ -101,7 +109,7 @@ func TestProjectPlanError(t *testing.T) {
 			result := RunTest(t, []string{"plan"}, "fixtures/plan-error", version)
 			assert.Contains(t, result.Stderr.String(), "foo: [31mERROR")
 			errorMessage := "Error parsing"
-			if terraform.StringVersionMatches(version, ">=0.12") {
+			if stringVersionMatches(version, ">=0.12") {
 				errorMessage = "Argument or block definition required"
 			}
 			assert.Contains(t, result.Stderr.String(), errorMessage)
