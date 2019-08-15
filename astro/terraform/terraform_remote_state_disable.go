@@ -120,12 +120,15 @@ func (s *Session) deleteBackendConfig() error {
 	if len(candidates) < 1 {
 		return errors.New("cannot find backend configuration in the Terraform files")
 	}
+	terraformVersion, err := s.Version()
+	if err != nil {
+		return err
+	}
 
 	for _, f := range candidates {
-		if err := deleteTerraformBackendConfigFromFile(f); err != nil {
+		if err := deleteTerraformBackendConfigFromFile(f, terraformVersion); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
