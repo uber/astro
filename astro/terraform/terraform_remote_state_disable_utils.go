@@ -19,11 +19,14 @@ package terraform
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 
 	"github.com/uber/astro/astro/logger"
 
+	version "github.com/burl/go-version"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/printer"
@@ -41,22 +44,22 @@ func astGet(l *ast.ObjectList, key string) ast.Node {
 	return nil
 }
 
-// astDel deletes the node at key from l. Returns an error if the key does not
-// exist.
-func astDel(l *ast.ObjectList, key string) error {
+// astDelIfExists deletes the node at key from l if it exists.
+// Returns true if item was deleted.
+func astDelIfExists(l *ast.ObjectList, key string) bool {
 	for i := range l.Items {
 		for j := range l.Items[i].Keys {
 			if l.Items[i].Keys[j].Token.Text == key {
 				l.Items = append(l.Items[:i], l.Items[i+1:]...)
-				return nil
+				return true
 			}
 		}
 	}
-	return errors.New("cannot delete key %v: does not exist")
+	return false
 }
 
-func deleteTerraformBackendConfig(in []byte) (updatedConfig []byte, err error) {
-	config, err := parseTerraformConfig(in)
+func deleteTerraformBackendConfigWithHCL(in []byte) (updatedConfig []byte, err error) {
+	config, err := parseTerraformConfigWithHCL(in)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +69,7 @@ func deleteTerraformBackendConfig(in []byte) (updatedConfig []byte, err error) {
 		return nil, errors.New("could not parse \"terraform\" block in config")
 	}
 
-	if err := astDel(terraformConfigBlock.List, "backend"); err != nil {
-		return nil, err
-	}
+	astDelIfExists(terraformConfigBlock.List, "backend")
 
 	buf := &bytes.Buffer{}
 	printer.Fprint(buf, config)
@@ -76,14 +77,43 @@ func deleteTerraformBackendConfig(in []byte) (updatedConfig []byte, err error) {
 	return buf.Bytes(), nil
 }
 
-func deleteTerraformBackendConfigFromFile(file string) error {
+// hcl2 (used by terraform 0.12) doesn't provide interface to walk through the AST or
+// to modify block values, see https://github.com/hashicorp/hcl2/issues/23 and
+// https://github.com/hashicorp/hcl2/issues/88
+// As a work around we'll perform surgery directly on text, if backend config is simple.
+// The method returns an error, if the config is too complicated to be parsed with the regexp.
+// This method should be rewritten once hcl2 supports AST traversal and modification.
+func deleteTerraformBackendConfigWithHCL2(in []byte) (updatedConfig []byte, err error) {
+	// Regexp to find if any backend configuration exists
+	backendDefinitionRe := regexp.MustCompile(`(?s)[{\s+]backend\s+"[^"]+"\s*{`)
+	// Regexp to find simple backend configuration, which doesn't contain '{}' inside
+	backendBlockRe := regexp.MustCompile(`(?s)(\s*backend\s+"[^"]+"\s*{[^{]*?})`)
+	if backendDefinitionRe.Match(in) {
+		indexes := backendBlockRe.FindSubmatchIndex(in)
+		if indexes == nil {
+			return nil, fmt.Errorf("unable to delete backend config: unsupported sytax")
+		}
+		// Remove found backend submatch from config
+		return append(in[:indexes[2]], in[indexes[3]:]...), nil
+	}
+	return in, nil
+}
+
+func deleteTerraformBackendConfig(in []byte, v *version.Version) (updatedConfig []byte, err error) {
+	if VersionMatches(v, "<0.12") {
+		return deleteTerraformBackendConfigWithHCL(in)
+	}
+	return deleteTerraformBackendConfigWithHCL2(in)
+}
+
+func deleteTerraformBackendConfigFromFile(file string, v *version.Version) error {
 	logger.Trace.Printf("terraform: deleting backend config from %v", file)
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
 
-	updatedConfig, err := deleteTerraformBackendConfig(b)
+	updatedConfig, err := deleteTerraformBackendConfig(b, v)
 	if err != nil {
 		return err
 	}
@@ -107,7 +137,7 @@ func deleteTerraformBackendConfigFromFile(file string) error {
 	return nil
 }
 
-func parseTerraformConfig(in []byte) (*ast.ObjectList, error) {
+func parseTerraformConfigWithHCL(in []byte) (*ast.ObjectList, error) {
 	astFile, err := hcl.ParseBytes(in)
 	if err != nil {
 		return nil, err
