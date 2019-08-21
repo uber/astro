@@ -81,28 +81,37 @@ func TestPlanErrorOnMissingValues(t *testing.T) {
 }
 
 func TestPlanAllowedValues(t *testing.T) {
-	tt := []string{
-		"mgmt",
-		"dev",
-		"staging",
-		"prod",
+	testcases := []struct {
+		env             string
+		expectedModules []string
+	}{
+		{
+			"mgmt",
+			[]string{"foo_mgmt-mgmt"},
+		},
+		{
+			"dev",
+			[]string{"misc-dev", "test_env-dev"},
+		},
+		{
+			"staging",
+			[]string{"misc-staging", "test_env-staging"},
+		},
+		{
+			"prod",
+			[]string{"misc-prod"},
+		},
 	}
-	expectedModules := map[string][]string{
-		"dev":     []string{"misc-dev", "test_env-dev"},
-		"mgmt":    []string{"foo_mgmt-mgmt"},
-		"staging": []string{"misc-staging", "test_env-staging"},
-		"prod":    []string{"misc-prod"},
-	}
-	for _, env := range tt {
-		t.Run(env, func(t *testing.T) {
+	for _, tt := range testcases {
+		t.Run(tt.env, func(t *testing.T) {
 			result := tests.RunTest(t, []string{
 				"--config=merge_values.yaml",
 				"plan",
 				"--environment",
-				env,
+				tt.env,
 			}, "fixtures/flags", tests.VERSION_LATEST)
-			// Check that all expected modules were planned for environment env
-			for _, module := range expectedModules[env] {
+			// Check that all expected modules were planned for environment
+			for _, module := range tt.expectedModules {
 				assert.Contains(t, result.Stdout.String(), module)
 			}
 
