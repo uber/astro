@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"time"
 
@@ -106,18 +107,65 @@ func (p *Process) Run() error {
 		p.config.ExpectedSuccessCodes = []int{0}
 	}
 
+	var resultError error
+	var resultTime time.Duration
+
 	// Run the process
 	started := time.Now()
-	err := p.execCmd.Run()
+	if err := p.execCmd.Start(); err != nil {
+		logger.Error.Print(err) // Command not found on PATH, not executable, etc.
+		resultError = err
+		resultTime = time.Since(started)
+	} else {
+		// wait for the command to finish
+		waitCh := make(chan error, 1)
+		go func() {
+			waitCh <- p.execCmd.Wait()
+			close(waitCh)
+		}()
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGTERM, os.Interrupt)
+
+	Loop:
+		for {
+			select {
+			case sig := <-sigChan:
+				process := p.execCmd.Process
+				logger.Trace.Printf("Signal: %s, process: %d", sig, process.Pid)
+				if err := process.Signal(sig); err != nil {
+					// Not clear how we can hit this, but probably not
+					// worth terminating the child.
+					logger.Error.Print("error sending signal", sig, err)
+				}
+			case chErr := <-waitCh:
+				// Record run time
+				resultTime = time.Since(started)
+
+				// Subprocess exited. Get the return code, if we can
+				var waitStatus syscall.WaitStatus
+				logger.Trace.Printf("exec2: command exit code from Process: %v\n", p.ExitCode())
+				if exitError, ok := chErr.(*exec.ExitError); ok {
+					waitStatus = exitError.Sys().(syscall.WaitStatus)
+					logger.Trace.Printf("exec2: command exit code from chErr: %v\n", waitStatus.ExitStatus())
+					// Return an error, if the command didn't exit with a success code
+					if !p.Success() {
+						resultError = fmt.Errorf("%s%v", p.Stderr().String(), chErr)
+					}
+				}
+				if chErr != nil {
+					logger.Error.Print("Channel error", chErr)
+				}
+				break Loop
+			}
+		}
+	}
 
 	// Record run time
-	p.time = time.Since(started)
-
-	logger.Trace.Printf("exec2: command exit code: %v\n", p.ExitCode())
+	p.time = resultTime
 
 	// Return an error, if the command didn't exit with a success code
-	if !p.Success() {
-		return fmt.Errorf("%s%v", p.Stderr().String(), err)
+	if !p.Success() || resultError != nil {
+		return fmt.Errorf("%s%v", p.Stderr().String(), resultError)
 	}
 
 	return nil
