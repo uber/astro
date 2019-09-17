@@ -17,9 +17,12 @@
 package astro
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/uber/astro/astro/logger"
 	"github.com/uber/astro/astro/utils"
@@ -61,6 +64,9 @@ type Session struct {
 
 	id   string
 	path string
+
+	// for OS signal handling
+	signalChan chan os.Signal
 }
 
 // NewSession creates a new session in the repository.
@@ -72,10 +78,14 @@ func (r *SessionRepo) NewSession() (*Session, error) {
 		return nil, err
 	}
 
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM, os.Interrupt)
+
 	return &Session{
-		id:   id,
-		path: sessionPath,
-		repo: r,
+		id:         id,
+		path:       sessionPath,
+		repo:       r,
+		signalChan: signalChan,
 	}, nil
 }
 
@@ -140,9 +150,16 @@ func (s *Session) apply(boundExecutions []*boundExecution) (<-chan string, <-cha
 		})
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		sig := <-s.signalChan
+		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
+		cancel()
+	}()
+
 	go func() {
 		defer close(results) // signals the end of all executions
-		utils.Parallel(10, fns...)
+		utils.Parallel(ctx, 10, fns...)
 	}()
 
 	return status, results, nil
@@ -169,6 +186,13 @@ func (s *Session) applyWithGraph(boundExecutions []*boundExecution) (<-chan stri
 	status := make(chan string, numberOfExecutions*10)
 	results := make(chan *Result, numberOfExecutions)
 
+	isCancelled := false
+	go func() {
+		sig := <-s.signalChan
+		isCancelled = true
+		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
+	}()
+
 	// Walk the graph and execute
 	go func() {
 		defer close(results)
@@ -180,6 +204,11 @@ func (s *Session) applyWithGraph(boundExecutions []*boundExecution) (<-chan stri
 			}
 
 			b := vertex.(*boundExecution)
+
+			if isCancelled {
+				logger.Trace.Printf("Operation is cancelled, skipping execution: %v\n", b)
+				return nil
+			}
 
 			terraform, err := s.newTerraformSession(b)
 			if err != nil {
@@ -297,10 +326,17 @@ func (s *Session) plan(boundExecutions []*boundExecution, detach bool) (<-chan s
 		})
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		sig := <-s.signalChan
+		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
+		cancel()
+	}()
+
 	// Run plans in parallel
 	go func() {
 		defer close(results) // signals the end of all executions
-		utils.Parallel(10, fns...)
+		utils.Parallel(ctx, 10, fns...)
 	}()
 
 	return status, results, nil

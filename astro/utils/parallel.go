@@ -17,41 +17,33 @@
 package utils
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
+	"context"
 	"sync"
-	"syscall"
 )
 
 // Parallel runs at most maxConcurrent functions in parallel.
-func Parallel(maxConcurrent int, fns ...func()) {
+func Parallel(ctx context.Context, maxConcurrent int, fns ...func()) {
 	wg := sync.WaitGroup{}
 	guard := make(chan struct{}, maxConcurrent)
 
-	isShutDown := false
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGTERM, os.Interrupt)
+	isCancelled := false
 	go func() {
-		signal := <-signalCh
-		fmt.Printf("\nReceived signal: %s, gracefully shutting down...\n", signal)
-		isShutDown = true
+		<-ctx.Done()
+		isCancelled = true
 	}()
 
 	for _, fn := range fns {
 		// https://stackoverflow.com/a/25306241
 		guard <- struct{}{} // would block if guard channel is already filled
-		if isShutDown {
-			fmt.Println("Shutting down. No new terraform processes will be launched.")
+		if isCancelled {
 			break
-		} else {
-			wg.Add(1)
-			go func(fn func()) {
-				defer wg.Done()
-				fn()
-				<-guard
-			}(fn)
 		}
+		wg.Add(1)
+		go func(fn func()) {
+			defer wg.Done()
+			fn()
+			<-guard
+		}(fn)
 	}
 
 	wg.Wait()
