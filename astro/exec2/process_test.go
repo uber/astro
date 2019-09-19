@@ -19,9 +19,12 @@ package exec2_test
 import (
 	"io/ioutil"
 	"os"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/uber/astro/astro/exec2"
+	"github.com/uber/astro/astro/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,8 +71,8 @@ func TestCombinedOutputLog(t *testing.T) {
 
 	// This process writes something to stdout and stderr
 	process := exec2.NewProcess(exec2.Cmd{
-		Command: "/bin/sh",
-		Args:    []string{"-c", "echo Hello, world!; echo uhoh! >&2"},
+		Command:               "/bin/sh",
+		Args:                  []string{"-c", "echo Hello, world!; echo uhoh! >&2"},
 		CombinedOutputLogFile: tmpLogFile.Name(),
 	})
 
@@ -96,4 +99,39 @@ func TestExited(t *testing.T) {
 	assert.False(t, process.Exited())
 	process.Run()
 	assert.True(t, process.Exited())
+}
+
+func TestProcessInterrupted(t *testing.T) {
+	fakeTerraformPath := "../tests/fixtures/terraform"
+	require.True(t, utils.FileExists(fakeTerraformPath))
+
+	process := exec2.NewProcess(exec2.Cmd{
+		Command: fakeTerraformPath,
+		Args:    []string{"plan"},
+	})
+	var processErr error
+
+	// launch the process
+	processChan := make(chan struct{}, 1)
+	go func() {
+		defer close(processChan)
+		processErr = process.Run()
+		processChan <- struct{}{}
+	}()
+
+	// let the process start properly
+	time.Sleep(100 * time.Millisecond)
+
+	// send SIGINT signal to the process
+	pr := process.Process()
+	defer pr.Signal(syscall.SIGKILL)
+	require.NoError(t, pr.Signal(os.Interrupt))
+
+	<-processChan
+	require.NoError(t, processErr)
+	require.Empty(t, process.Stderr().String())
+	assert.Equal(t, 0, process.ExitCode())
+
+	assert.True(t, process.Success())
+	assert.Equal(t, "Trapped: INT\n", process.Stdout().String())
 }

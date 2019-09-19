@@ -17,17 +17,23 @@
 package tests
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
+	"github.com/uber/astro/astro/terraform"
+	"github.com/uber/astro/astro/utils"
+
+	"github.com/burl/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uber/astro/astro/terraform"
-
-	version "github.com/burl/go-version"
 )
 
 // getSessionDirs returns a list of the sessions inside a session repository.
@@ -59,6 +65,68 @@ func getSessionDirs(sessionBaseDir string) ([]string, error) {
 // See terraform.VersionMatches for more info.
 func stringVersionMatches(v string, versionConstraint string) bool {
 	return terraform.VersionMatches(version.Must(version.NewVersion(v)), versionConstraint)
+}
+
+// compiles the astro binary and returns the path to it.
+func compileAstro() (string, error) {
+	astroPath := "/tmp/astro"
+	packageName := "github.com/uber/astro/astro/cli/astro"
+	_ = os.RemoveAll(astroPath)
+	out, err := exec.Command("go", "build", "-o", astroPath, packageName).CombinedOutput()
+	if err != nil {
+		return "", errors.New(string(out))
+	}
+	return astroPath, nil
+}
+
+func TestPlanInterrupted(t *testing.T) {
+	fakeTerraformPath := "fixtures/terraform"
+	require.True(t, utils.FileExists(fakeTerraformPath))
+	fakeTerraformDir, err := filepath.Abs(filepath.Dir(fakeTerraformPath))
+	require.NoError(t, err)
+
+	oldPath := os.Getenv("PATH")
+	os.Setenv("PATH", fmt.Sprintf("%s:%s", fakeTerraformDir, oldPath))
+	defer os.Setenv("PATH", oldPath)
+
+	astroBinary, err := compileAstro()
+	defer os.RemoveAll(astroBinary)
+	require.NoError(t, err)
+	command := exec.Command(astroBinary, "plan")
+
+	fixtureAbsPath, err := filepath.Abs("fixtures/plan-interrupted")
+	require.NoError(t, err)
+	command.Dir = fixtureAbsPath
+
+	stdoutBytes := &bytes.Buffer{}
+	stderrBytes := &bytes.Buffer{}
+	command.Stdout = stdoutBytes
+	command.Stderr = stderrBytes
+
+	var cmdErr error
+	processChan := make(chan struct{}, 1)
+	go func() {
+		defer close(processChan)
+		cmdErr = command.Run()
+		processChan <- struct{}{}
+	}()
+
+	// we need to catch a "planning" state here
+	// from astro/tests/fixtures/terraform:
+	// 1 second - init/get, 4 seconds in total
+	// 10 seconds - plan/apply
+	time.Sleep(7000 * time.Millisecond)
+	require.NoError(t, command.Process.Signal(os.Interrupt))
+
+	<-processChan
+	require.NoError(t, cmdErr)
+	require.Empty(t, stderrBytes.String())
+	require.Equal(t, 0, command.ProcessState.ExitCode())
+
+	stdout := stdoutBytes.String()
+	assert.Contains(t, stdout, "\nReceived signal: interrupt, cancelling operation...\n")
+	assert.Regexp(t, `foo\d{2}:.*No changes`, stdout)
+	assert.NotRegexp(t, `bar\d{2}:`, stdout)
 }
 
 func TestProjectApplyChangesSuccess(t *testing.T) {

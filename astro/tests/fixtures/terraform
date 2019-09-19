@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+readonly VERSION='Terraform v0.12.7'
+
+fake_work() {
+    local -r seconds="$1"
+    for ((i=0;i<=$(($seconds*10)); i++)) do
+        sleep 0.1
+    done
+}
+
+trap_with_arg() {
+    func="$1" ; shift
+    for sig ; do
+        trap "${func} ${sig}" "${sig}"
+    done
+}
+
+func_trap() {
+    echo "Trapped: $1"; fake_work 2; exit 0
+}
+
+trap_with_arg func_trap INT TERM
+
+main() {
+    if [ $# -ne 0 ]; then
+        case "$1" in
+        version)
+            echo "$VERSION"
+            ;;
+        plan|apply)
+            fake_work 10
+            ;;
+        *)
+            fake_work 1
+            ;;
+        esac
+    else
+        echo "Fake terraform: wrong usage, please specify at least one argument" >&2
+        exit 127
+    fi
+}
+
+[ "$0" == "${BASH_SOURCE[0]}" ] && main "$@"
+exit 0
