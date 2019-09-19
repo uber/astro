@@ -70,6 +70,10 @@ func (p *Process) configureOutputs() error {
 	return nil
 }
 
+func (p *Process) Process() *os.Process {
+	return p.execCmd.Process
+}
+
 // ExitCode returns the exit code for the process. If the process has
 // not yet run or exited, the result will be 0.
 func (p *Process) ExitCode() int {
