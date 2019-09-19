@@ -137,10 +137,17 @@ type unboundExecution struct {
 // boundExecution with variable values replaced. An error is returned if
 // not all required user values were provided.
 func (e *unboundExecution) bind(userVars map[string]string) (*boundExecution, error) {
-	boundVars := union(e.Variables(), userVars)
+	// boundVars is the map of execution variables bound to the values provided by user
+	boundVars := make(map[string]string)
+
+	for key, val := range e.Variables() {
+		boundVars[key] = val
+		if userVal, ok := userVars[key]; ok {
+			boundVars[key] = userVal
+		}
+	}
 
 	missingVars := []string{}
-
 	// Check that the user provided variables replace everything that
 	// needs to be replaced.
 	for _, val := range boundVars {

@@ -1,0 +1,22 @@
+---
+
+terraform:
+  path: ../mock-terraform/success
+
+modules:
+
+  - name: foo
+    path: .
+    remote:
+      backend: local
+      backend_config:
+        key: "/tmp/terraform-test/foo.tfstate"
+
+  - name: bar
+    path: .
+    remote:
+      backend: local
+      backend_config:
+        key: "/tmp/terraform-test/bar.tfstate"
+    variables:
+      - name: region
