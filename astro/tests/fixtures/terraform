@@ -2,6 +2,10 @@
 set -euo pipefail
 readonly VERSION='Terraform v0.12.7'
 
+# When Bash receives a signal for which a trap has been set
+# while waiting for a command to complete,
+# the trap will not be executed until the command completes.
+# http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_12_02.html
 fake_work() {
     local -r seconds="$1"
     for ((i=0;i<=$(($seconds*10)); i++)) do
@@ -28,11 +32,8 @@ main() {
         version)
             echo "$VERSION"
             ;;
-        plan|apply)
-            fake_work 10
-            ;;
         *)
-            fake_work 1
+            fake_work 100
             ;;
         esac
     else

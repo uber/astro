@@ -186,13 +186,6 @@ func (s *Session) applyWithGraph(boundExecutions []*boundExecution) (<-chan stri
 	status := make(chan string, numberOfExecutions*10)
 	results := make(chan *Result, numberOfExecutions)
 
-	isCancelled := false
-	go func() {
-		sig := <-s.signalChan
-		isCancelled = true
-		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
-	}()
-
 	// Walk the graph and execute
 	go func() {
 		defer close(results)
@@ -204,12 +197,6 @@ func (s *Session) applyWithGraph(boundExecutions []*boundExecution) (<-chan stri
 			}
 
 			b := vertex.(*boundExecution)
-
-			if isCancelled {
-				logger.Trace.Printf("Operation is cancelled, skipping execution: %v\n", b)
-				return nil
-			}
-
 			terraform, err := s.newTerraformSession(b)
 			if err != nil {
 				results <- &Result{

@@ -26,9 +26,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/uber/astro/astro/logger"
+
+	"github.com/hashicorp/go-multierror"
 )
+
+// a flag to indicate that we caught an interrupt signal
+// so no new processes will be launched
+var isInterrupted = false
 
 // NewProcess creates a new process, given the configuration. It does
 // not start the process.
@@ -99,8 +104,15 @@ func (p *Process) Exited() bool {
 
 // Run runs the process.
 func (p *Process) Run() error {
-	logger.Trace.Printf("exec2: running command: %v; args: %v\n", p.config.Command, p.config.Args)
-	p.execCmd = exec.Command(p.config.Command, p.config.Args...)
+	command := p.config.Command
+	args := p.config.Args
+
+	if isInterrupted {
+		return fmt.Errorf("astro was interrupted, command won't be run: %s, args: %v", command, args)
+	}
+
+	logger.Trace.Printf("exec2: running command: %v; args: %v\n", command, args)
+	p.execCmd = exec.Command(command, args...)
 
 	// Apply options
 	p.execCmd.Dir = p.config.WorkingDir
@@ -131,16 +143,12 @@ func (p *Process) Run() error {
 		for {
 			select {
 			case sig := <-sigChan:
+				isInterrupted = true
+				errors = multierror.Append(fmt.Errorf("signal received: %s", sig))
 				process := p.execCmd.Process
-				logger.Trace.Printf("Signal: %s, process: %d", sig, process.Pid)
+				logger.Trace.Printf("Signal: %s, process: %d\n", sig, process.Pid)
 				if err := process.Signal(sig); err != nil {
-					// Not clear how we can hit this, but probably not
-					// worth terminating the child.
-					if errors != nil {
-						errors = multierror.Append(errors, err)
-					} else {
-						errors = err
-					}
+					errors = multierror.Append(errors, err)
 				}
 			case err := <-waitCh:
 				// Record run time
@@ -148,11 +156,7 @@ func (p *Process) Run() error {
 				logger.Trace.Printf("exec2: command exit code: %v\n", p.ExitCode())
 				// Return an error, if the command didn't exit with a success code
 				if !p.Success() {
-					if errors != nil {
-						errors = multierror.Append(errors, err)
-					} else {
-						errors = err
-					}
+					errors = multierror.Append(errors, err)
 					return fmt.Errorf("%s%v", p.Stderr().String(), errors)
 				}
 				return errors

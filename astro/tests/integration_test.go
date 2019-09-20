@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"syscall"
 	"testing"
 	"time"
 
@@ -68,10 +69,9 @@ func stringVersionMatches(v string, versionConstraint string) bool {
 }
 
 // compiles the astro binary and returns the path to it.
-func compileAstro() (string, error) {
-	astroPath := "/tmp/astro"
+func compileAstro(dir string) (string, error) {
+	astroPath := filepath.Join(dir, "astro")
 	packageName := "github.com/uber/astro/astro/cli/astro"
-	_ = os.RemoveAll(astroPath)
 	out, err := exec.Command("go", "build", "-o", astroPath, packageName).CombinedOutput()
 	if err != nil {
 		return "", errors.New(string(out))
@@ -89,8 +89,11 @@ func TestPlanInterrupted(t *testing.T) {
 	os.Setenv("PATH", fmt.Sprintf("%s:%s", fakeTerraformDir, oldPath))
 	defer os.Setenv("PATH", oldPath)
 
-	astroBinary, err := compileAstro()
-	defer os.RemoveAll(astroBinary)
+	tmpdir, err := ioutil.TempDir("", "astro-binary")
+	defer os.RemoveAll(tmpdir)
+	require.NoError(t, err)
+
+	astroBinary, err := compileAstro(tmpdir)
 	require.NoError(t, err)
 	command := exec.Command(astroBinary, "plan")
 
@@ -111,22 +114,27 @@ func TestPlanInterrupted(t *testing.T) {
 		processChan <- struct{}{}
 	}()
 
-	// we need to catch a "planning" state here
-	// from astro/tests/fixtures/terraform:
-	// 1 second - init/get, 4 seconds in total
-	// 10 seconds - plan/apply
-	time.Sleep(7000 * time.Millisecond)
+	// let astro start terraform processes
+	time.Sleep(1000 * time.Millisecond)
 	require.NoError(t, command.Process.Signal(os.Interrupt))
 
-	<-processChan
-	require.NoError(t, cmdErr)
-	require.Empty(t, stderrBytes.String())
-	require.Equal(t, 0, command.ProcessState.ExitCode())
+	select {
+	case <-processChan:
+	case <-time.After(5 * time.Second):
+		// force kill the process after timeout
+		require.NoError(t, command.Process.Signal(syscall.SIGKILL))
+	}
+
+	require.Error(t, cmdErr)
+	require.Equal(t, 1, command.ProcessState.ExitCode())
 
 	stdout := stdoutBytes.String()
+	stderr := stderrBytes.String()
 	assert.Contains(t, stdout, "\nReceived signal: interrupt, cancelling operation...\n")
-	assert.Regexp(t, `foo\d{2}:.*No changes`, stdout)
+	assert.Regexp(t, `foo\d{2}:.*ERROR`, stderr)
+	assert.NotRegexp(t, `foo\d{2}:`, stdout)
 	assert.NotRegexp(t, `bar\d{2}:`, stdout)
+	assert.NotRegexp(t, `bar\d{2}:`, stderr)
 }
 
 func TestProjectApplyChangesSuccess(t *testing.T) {
