@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"fmt"
+	"regexp"
 )
 
 // Plan runs a `terraform plan`
@@ -53,12 +54,27 @@ func (s *Session) Plan() (Result, error) {
 	// are changes (so there's no error).
 	if process.ExitCode() == 2 {
 		// Fetch changes
-		result, err := s.Show(fmt.Sprintf("%s.plan", s.id))
+		terraformVersion, err := s.versionCached()
 		if err != nil {
-			return result, err
+			return nil, err
 		}
-
-		changes = result.Stdout()
+		if VersionMatches(terraformVersion, "<0.12") {
+			result, err := s.Show(fmt.Sprintf("%s.plan", s.id))
+			if err != nil {
+				return result, err
+			}
+			changes = result.Stdout()
+		} else {
+			rawPlanOutput := process.Stdout().String()
+			var re = regexp.MustCompile(`(?s)Terraform will perform the following actions:(.*)-{72}`)
+			if match := re.FindStringSubmatch(rawPlanOutput); len(match) == 2 {
+				changes = match[1]
+			} else {
+				return &terraformResult{
+					process: process,
+				}, fmt.Errorf("unable to parse terraform plan output")
+			}
+		}
 	}
 
 	return &PlanResult{
