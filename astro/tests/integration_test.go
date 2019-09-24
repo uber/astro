@@ -110,7 +110,7 @@ func TestProjectPlanError(t *testing.T) {
 			assert.Contains(t, result.Stderr.String(), "foo: [31mERROR")
 			errorMessage := "Error parsing"
 			if stringVersionMatches(version, ">=0.12") {
-				errorMessage = "Argument or block definition required"
+				errorMessage = "Argument or block definition required"
 			}
 			assert.Contains(t, result.Stderr.String(), errorMessage)
 			assert.Equal(t, 1, result.ExitCode)
