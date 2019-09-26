@@ -137,7 +137,7 @@ func (p *Process) Run() error {
 			close(waitCh)
 		}()
 		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGTERM, os.Interrupt)
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 		var errors error
 		for {

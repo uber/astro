@@ -125,7 +125,7 @@ func TestProcessInterrupted(t *testing.T) {
 	// send SIGINT signal to the process
 	pr := process.Process()
 	defer pr.Signal(syscall.SIGKILL)
-	require.NoError(t, pr.Signal(os.Interrupt))
+	require.NoError(t, pr.Signal(syscall.SIGINT))
 
 	<-processChan
 	require.NoError(t, processErr)

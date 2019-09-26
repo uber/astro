@@ -116,7 +116,7 @@ func TestPlanInterrupted(t *testing.T) {
 
 	// let astro start terraform processes
 	time.Sleep(1000 * time.Millisecond)
-	require.NoError(t, command.Process.Signal(os.Interrupt))
+	require.NoError(t, command.Process.Signal(syscall.SIGINT))
 
 	select {
 	case <-processChan:

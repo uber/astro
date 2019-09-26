@@ -79,7 +79,7 @@ func (r *SessionRepo) NewSession() (*Session, error) {
 	}
 
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGTERM, os.Interrupt)
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT)
 
 	return &Session{
 		id:         id,
