@@ -20,11 +20,11 @@ trap_with_arg() {
     done
 }
 
-func_trap() {
+handle_signal() {
     echo "Trapped: $1"; fake_work 2; exit 0
 }
 
-trap_with_arg func_trap INT TERM
+trap_with_arg handle_signal INT TERM
 
 main() {
     if [ $# -ne 0 ]; then
