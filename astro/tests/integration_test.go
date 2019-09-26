@@ -37,6 +37,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var noChangesRegexp = `(?s)foo: \x1b\[32mOK\x1b\[0m\x1b\[37m No changes\x1b\[0m\x1b\[37m \(\d{0,2}s\)\x1b\[0m\nDone\n`
+
 // getSessionDirs returns a list of the sessions inside a session repository.
 // This excludes other directories that might have been created in there, e.g.
 // the shared plugin cache directory.
@@ -158,7 +160,7 @@ func TestProjectPlanSuccessNoChanges(t *testing.T) {
 	for _, version := range terraformVersionsToTest {
 		t.Run(version, func(t *testing.T) {
 			result := RunTest(t, []string{"plan", "--trace"}, "fixtures/plan-success-nochanges", version)
-			assert.Equal(t, "foo: \x1b[32mOK\x1b[0m\x1b[37m No changes\x1b[0m\x1b[37m (0s)\x1b[0m\nDone\n", result.Stdout.String())
+			assert.Regexp(t, noChangesRegexp, result.Stdout.String())
 			assert.Equal(t, 0, result.ExitCode)
 		})
 	}
@@ -206,7 +208,7 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 			result := RunTest(t, []string{"plan", "--detach"}, "fixtures/plan-detach", version)
 			require.Empty(t, result.Stderr.String())
 			require.Equal(t, 0, result.ExitCode)
-			require.Equal(t, "foo: \x1b[32mOK\x1b[0m\x1b[37m No changes\x1b[0m\x1b[37m (0s)\x1b[0m\nDone\n", result.Stdout.String())
+			require.Regexp(t, noChangesRegexp, result.Stdout.String())
 
 			sessionDirs, err := getSessionDirs("/tmp/terraform-tests/plan-detach/.astro")
 			require.NoError(t, err)
