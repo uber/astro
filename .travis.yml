@@ -6,7 +6,7 @@ cache:
 env:
   - GO111MODULE=on
 go:
- - "1.11.x"
+ - "1.12.x"
 script:
 - make lint
 - make test

@@ -17,18 +17,27 @@
 package tests
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"syscall"
 	"testing"
+	"time"
 
+	"github.com/uber/astro/astro/terraform"
+	"github.com/uber/astro/astro/utils"
+
+	"github.com/burl/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uber/astro/astro/terraform"
-
-	version "github.com/burl/go-version"
 )
+
+var noChangesRegexp = `(?s)foo: \x1b\[32mOK\x1b\[0m\x1b\[37m No changes\x1b\[0m\x1b\[37m \(\d{0,2}s\)\x1b\[0m\nDone\n`
 
 // getSessionDirs returns a list of the sessions inside a session repository.
 // This excludes other directories that might have been created in there, e.g.
@@ -61,6 +70,75 @@ func stringVersionMatches(v string, versionConstraint string) bool {
 	return terraform.VersionMatches(version.Must(version.NewVersion(v)), versionConstraint)
 }
 
+// compiles the astro binary and returns the path to it.
+func compileAstro(dir string) (string, error) {
+	astroPath := filepath.Join(dir, "astro")
+	packageName := "github.com/uber/astro/astro/cli/astro"
+	out, err := exec.Command("go", "build", "-o", astroPath, packageName).CombinedOutput()
+	if err != nil {
+		return "", errors.New(string(out))
+	}
+	return astroPath, nil
+}
+
+func TestPlanInterrupted(t *testing.T) {
+	fakeTerraformPath := "fixtures/terraform"
+	require.True(t, utils.FileExists(fakeTerraformPath))
+	fakeTerraformDir, err := filepath.Abs(filepath.Dir(fakeTerraformPath))
+	require.NoError(t, err)
+
+	oldPath := os.Getenv("PATH")
+	os.Setenv("PATH", fmt.Sprintf("%s:%s", fakeTerraformDir, oldPath))
+	defer os.Setenv("PATH", oldPath)
+
+	tmpdir, err := ioutil.TempDir("", "astro-binary")
+	defer os.RemoveAll(tmpdir)
+	require.NoError(t, err)
+
+	astroBinary, err := compileAstro(tmpdir)
+	require.NoError(t, err)
+	command := exec.Command(astroBinary, "plan")
+
+	fixtureAbsPath, err := filepath.Abs("fixtures/plan-interrupted")
+	require.NoError(t, err)
+	command.Dir = fixtureAbsPath
+
+	stdoutBytes := &bytes.Buffer{}
+	stderrBytes := &bytes.Buffer{}
+	command.Stdout = stdoutBytes
+	command.Stderr = stderrBytes
+
+	var cmdErr error
+	processChan := make(chan struct{}, 1)
+	go func() {
+		defer close(processChan)
+		cmdErr = command.Run()
+		processChan <- struct{}{}
+	}()
+
+	// let astro start terraform processes
+	time.Sleep(2000 * time.Millisecond)
+	require.NoError(t, command.Process.Signal(syscall.SIGINT))
+
+	select {
+	case <-processChan:
+	case <-time.After(5 * time.Second):
+		// force kill the process after timeout
+		require.NoError(t, command.Process.Signal(syscall.SIGKILL))
+	}
+
+	require.Error(t, cmdErr)
+	require.Equal(t, 1, command.ProcessState.ExitCode())
+
+	stdout := stdoutBytes.String()
+	stderr := stderrBytes.String()
+	assert.Contains(t, stdout, "\nReceived signal: interrupt, cancelling all operations...\n")
+	assert.Regexp(t, `foo\d{2}:.*ERROR`, stderr)
+	assert.NotRegexp(t, `foo\d{2}:`, stdout)
+	assert.NotRegexp(t, `bar\d{2}:`, stdout)
+	assert.NotRegexp(t, `bar\d{2}:`, stderr)
+}
+
 func TestProjectApplyChangesSuccess(t *testing.T) {
 	for _, version := range terraformVersionsToTest {
 		t.Run(version, func(t *testing.T) {
@@ -82,7 +160,7 @@ func TestProjectPlanSuccessNoChanges(t *testing.T) {
 	for _, version := range terraformVersionsToTest {
 		t.Run(version, func(t *testing.T) {
 			result := RunTest(t, []string{"plan", "--trace"}, "fixtures/plan-success-nochanges", version)
-			assert.Equal(t, "foo: \x1b[32mOK\x1b[0m\x1b[37m No changes\x1b[0m\x1b[37m (0s)\x1b[0m\nDone\n", result.Stdout.String())
+			assert.Regexp(t, noChangesRegexp, result.Stdout.String())
 			assert.Equal(t, 0, result.ExitCode)
 		})
 	}
@@ -130,7 +208,7 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 			result := RunTest(t, []string{"plan", "--detach"}, "fixtures/plan-detach", version)
 			require.Empty(t, result.Stderr.String())
 			require.Equal(t, 0, result.ExitCode)
-			require.Equal(t, "foo: \x1b[32mOK\x1b[0m\x1b[37m No changes\x1b[0m\x1b[37m (0s)\x1b[0m\nDone\n", result.Stdout.String())
+			require.Regexp(t, noChangesRegexp, result.Stdout.String())
 
 			sessionDirs, err := getSessionDirs("/tmp/terraform-tests/plan-detach/.astro")
 			require.NoError(t, err)

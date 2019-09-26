@@ -1,0 +1,41 @@
+module-config: &module-config
+  path: '.'
+  remote:
+    backend: local
+    backend_config:
+      path: /tmp/terraform-tests/nonexistent.tfstate
+
+modules:
+  # modules 01-10
+  - name: foo01
+    <<: *module-config
+  - name: foo02
+    <<: *module-config
+  - name: foo03
+    <<: *module-config
+  - name: foo04
+    <<: *module-config
+  - name: foo05
+    <<: *module-config
+  - name: foo06
+    <<: *module-config
+  - name: foo07
+    <<: *module-config
+  - name: foo08
+    <<: *module-config
+  - name: foo09
+    <<: *module-config
+  - name: foo10
+    <<: *module-config
+
+  # modules 11-15
+  - name: bar01
+    <<: *module-config
+  - name: bar02
+    <<: *module-config
+  - name: bar03
+    <<: *module-config
+  - name: bar04
+    <<: *module-config
+  - name: bar05
+    <<: *module-config

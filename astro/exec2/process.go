@@ -22,11 +22,18 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/uber/astro/astro/logger"
+
+	"github.com/hashicorp/go-multierror"
 )
+
+// a flag to indicate that we caught an interrupt signal
+// so no new processes will be launched
+var isInterrupted = false
 
 // NewProcess creates a new process, given the configuration. It does
 // not start the process.
@@ -68,6 +75,12 @@ func (p *Process) configureOutputs() error {
 	return nil
 }
 
+// Process returns the Process field of underlying exec command
+// This allows us to interact with it, i.e. for sending signals
+func (p *Process) Process() *os.Process {
+	return p.execCmd.Process
+}
+
 // ExitCode returns the exit code for the process. If the process has
 // not yet run or exited, the result will be 0.
 func (p *Process) ExitCode() int {
@@ -93,13 +106,20 @@ func (p *Process) Exited() bool {
 
 // Run runs the process.
 func (p *Process) Run() error {
-	logger.Trace.Printf("exec2: running command: %v; args: %v\n", p.config.Command, p.config.Args)
-	p.execCmd = exec.Command(p.config.Command, p.config.Args...)
+	command := p.config.Command
+	args := p.config.Args
+
+	logger.Trace.Printf("exec2: running command: %v; args: %v\n", command, args)
+	p.execCmd = exec.Command(command, args...)
 
 	// Apply options
 	p.execCmd.Dir = p.config.WorkingDir
 	p.execCmd.Env = p.config.Env
 	p.configureOutputs()
+
+	if isInterrupted {
+		return fmt.Errorf("astro was interrupted, command won't be run: %s, args: %v", command, args)
+	}
 
 	// If no success codes were given, default to 0
 	if p.config.ExpectedSuccessCodes == nil {
@@ -108,19 +128,43 @@ func (p *Process) Run() error {
 
 	// Run the process
 	started := time.Now()
-	err := p.execCmd.Run()
+	if err := p.execCmd.Start(); err != nil {
+		p.time = time.Since(started)
+		return err
+	} else {
+		// wait for the command to finish
+		waitCh := make(chan error, 1)
+		go func() {
+			waitCh <- p.execCmd.Wait()
+			close(waitCh)
+		}()
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
-	// Record run time
-	p.time = time.Since(started)
-
-	logger.Trace.Printf("exec2: command exit code: %v\n", p.ExitCode())
-
-	// Return an error, if the command didn't exit with a success code
-	if !p.Success() {
-		return fmt.Errorf("%s%v", p.Stderr().String(), err)
+		var errors error
+		for {
+			select {
+			case sig := <-sigChan:
+				isInterrupted = true
+				errors = multierror.Append(fmt.Errorf("signal received: %s", sig))
+				process := p.execCmd.Process
+				logger.Trace.Printf("Signal: %s, process: %d\n", sig, process.Pid)
+				if err := process.Signal(sig); err != nil {
+					errors = multierror.Append(errors, err)
+				}
+			case err := <-waitCh:
+				// Record run time
+				p.time = time.Since(started)
+				logger.Trace.Printf("exec2: command exit code: %v\n", p.ExitCode())
+				// Return an error, if the command didn't exit with a success code
+				if !p.Success() {
+					errors = multierror.Append(errors, err)
+					return fmt.Errorf("%s%v", p.Stderr().String(), errors)
+				}
+				return errors
+			}
+		}
 	}
-
-	return nil
 }
 
 // Runtime returns the time.Duration the process took to run.

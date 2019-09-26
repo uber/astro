@@ -17,20 +17,27 @@
 package utils
 
 import (
+	"context"
 	"sync"
+
+	"golang.org/x/sync/semaphore"
 )
 
 // Parallel runs at most maxConcurrent functions in parallel.
-func Parallel(maxConcurrent int, fns ...func()) {
+func Parallel(ctx context.Context, maxConcurrent int, fns ...func()) {
 	wg := sync.WaitGroup{}
-	guard := make(chan struct{}, maxConcurrent)
+	sem := semaphore.NewWeighted(int64(maxConcurrent))
+
 	for _, fn := range fns {
-		guard <- struct{}{}
+		// https://medium.com/@deckarep/gos-extended-concurrency-semaphores-part-1-5eeabfa351ce
+		if err := sem.Acquire(ctx, 1); err != nil {
+			break
+		}
 		wg.Add(1)
 		go func(fn func()) {
 			defer wg.Done()
 			fn()
-			<-guard
+			sem.Release(1)
 		}(fn)
 	}
 
