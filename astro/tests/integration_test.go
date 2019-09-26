@@ -115,7 +115,7 @@ func TestPlanInterrupted(t *testing.T) {
 	}()
 
 	// let astro start terraform processes
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 	require.NoError(t, command.Process.Signal(syscall.SIGINT))
 
 	select {
@@ -130,7 +130,7 @@ func TestPlanInterrupted(t *testing.T) {
 
 	stdout := stdoutBytes.String()
 	stderr := stderrBytes.String()
-	assert.Contains(t, stdout, "\nReceived signal: interrupt, cancelling operation...\n")
+	assert.Contains(t, stdout, "\nReceived signal: interrupt, cancelling all operations...\n")
 	assert.Regexp(t, `foo\d{2}:.*ERROR`, stderr)
 	assert.NotRegexp(t, `foo\d{2}:`, stdout)
 	assert.NotRegexp(t, `bar\d{2}:`, stdout)

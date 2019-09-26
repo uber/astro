@@ -153,7 +153,7 @@ func (s *Session) apply(boundExecutions []*boundExecution) (<-chan string, <-cha
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		sig := <-s.signalChan
-		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
+		fmt.Printf("\nReceived signal: %s, cancelling all operations...\n", sig)
 		cancel()
 	}()
 
@@ -316,7 +316,7 @@ func (s *Session) plan(boundExecutions []*boundExecution, detach bool) (<-chan s
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		sig := <-s.signalChan
-		fmt.Printf("\nReceived signal: %s, cancelling operation...\n", sig)
+		fmt.Printf("\nReceived signal: %s, cancelling all operations...\n", sig)
 		cancel()
 	}()
 

@@ -109,10 +109,6 @@ func (p *Process) Run() error {
 	command := p.config.Command
 	args := p.config.Args
 
-	if isInterrupted {
-		return fmt.Errorf("astro was interrupted, command won't be run: %s, args: %v", command, args)
-	}
-
 	logger.Trace.Printf("exec2: running command: %v; args: %v\n", command, args)
 	p.execCmd = exec.Command(command, args...)
 
@@ -120,6 +116,10 @@ func (p *Process) Run() error {
 	p.execCmd.Dir = p.config.WorkingDir
 	p.execCmd.Env = p.config.Env
 	p.configureOutputs()
+
+	if isInterrupted {
+		return fmt.Errorf("astro was interrupted, command won't be run: %s, args: %v", command, args)
+	}
 
 	// If no success codes were given, default to 0
 	if p.config.ExpectedSuccessCodes == nil {
