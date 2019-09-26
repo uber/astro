@@ -75,6 +75,8 @@ func (p *Process) configureOutputs() error {
 	return nil
 }
 
+// Process returns the Process field of underlying exec command
+// This allows us to interact with it, i.e. for sending signals
 func (p *Process) Process() *os.Process {
 	return p.execCmd.Process
 }
