@@ -78,42 +78,42 @@ func TestDeleteTerraformBackendConfigWithHCL2Success(t *testing.T) {
 	}{
 		{
 			config: `
-        provider "aws"{
-          region = var.aws_region
-        }`,
+				provider "aws"{
+					region = var.aws_region
+				}`,
 			expected: `
-        provider "aws"{
-          region = var.aws_region
-        }`,
+				provider "aws"{
+					region = var.aws_region
+				}`,
 		},
 		{
 			config: `
-        terraform {
-          version = "v0.12.6"
-          backend "local" {
-            path = "path"
-          }
-          key = "value"
-        }`,
+				terraform {
+					version = "v0.12.6"
+					backend "local" {
+						path = "path"
+					}
+					key = "value"
+				}`,
 			expected: `
-        terraform {
-          version = "v0.12.6"
-          key = "value"
-        }`,
+				terraform {
+					version = "v0.12.6"
+					key = "value"
+				}`,
 		},
 		{
 			config: `
-        terraform {backend "s3" {}}
-    
-        provider "aws" {
-          region = "us-east-1"
-        }`,
+				terraform {backend "s3" {}}
+
+				provider "aws" {
+					region = "us-east-1"
+				}`,
 			expected: `
-        terraform {}
-    
-        provider "aws" {
-          region = "us-east-1"
-        }`,
+				terraform {}
+
+				provider "aws" {
+					region = "us-east-1"
+				}`,
 		},
 	}
 	for _, tt := range tests {
@@ -132,19 +132,19 @@ func TestDeleteTerraformBackendConfigWithHCL2Failure(t *testing.T) {
 	}{
 		{
 			config: `
-        terraform {
-          backend "local" {
-            path = "module-{{.environment}}"
-          }
-        }`,
+			terraform {
+				backend "local" {
+					path = "module-{{.environment}}"
+				}
+			}`,
 		},
 		{
 			config: `
-        terraform {
-          backend "concil" {
-            map = {"key": "val"}
-          }
-        }`,
+			terraform {
+				backend "concil" {
+					map = {"key": "val"}
+				}
+			}`,
 		},
 	}
 
