@@ -24,7 +24,7 @@ import (
 
 // Tests that backend part can be successfully removed from the config
 // written in HCL 1.0 language
-func TestDeleteTerraformBackendConfigWithHCL(t *testing.T) {
+func TestDeleteTerraformBackendConfigWithHCL1(t *testing.T) {
 	input := []byte(`
 terraform {
     backend "s3" {}
@@ -46,7 +46,7 @@ terraform {
     ]
 }`)
 
-	updatedConfig, err := deleteTerraformBackendConfigWithHCL(input)
+	updatedConfig, err := deleteTerraformBackendConfigWithHCL1(input)
 	assert.NoError(t, err)
 
 	assert.Equal(t, `terraform {}
@@ -77,37 +77,43 @@ func TestDeleteTerraformBackendConfigWithHCL2Success(t *testing.T) {
 		expected string
 	}{
 		{
-			`provider "aws"{
-        region = var.aws_region
-      }`,
-			`provider "aws"{
-        region = var.aws_region
-      }`,
+			config: `
+        provider "aws"{
+          region = var.aws_region
+        }`,
+			expected: `
+        provider "aws"{
+          region = var.aws_region
+        }`,
 		},
 		{
-			`terraform {
-         version = "v0.12.6"
-         backend "local" {
-           path = "path"
-         }
-         key = "value"
-       }`,
-			`terraform {
-         version = "v0.12.6"
-         key = "value"
-       }`,
+			config: `
+        terraform {
+          version = "v0.12.6"
+          backend "local" {
+            path = "path"
+          }
+          key = "value"
+        }`,
+			expected: `
+        terraform {
+          version = "v0.12.6"
+          key = "value"
+        }`,
 		},
 		{
-			`terraform {backend "s3" {}}
+			config: `
+        terraform {backend "s3" {}}
     
-      provider "aws" {
-        region = "us-east-1"
-      }`,
-			`terraform {}
+        provider "aws" {
+          region = "us-east-1"
+        }`,
+			expected: `
+        terraform {}
     
-      provider "aws" {
-        region = "us-east-1"
-      }`,
+        provider "aws" {
+          region = "us-east-1"
+        }`,
 		},
 	}
 	for _, tt := range tests {
@@ -121,20 +127,29 @@ func TestDeleteTerraformBackendConfigWithHCL2Success(t *testing.T) {
 // backend secions contains parenthesis fails. See comment on
 // deleteTerraformBackendConfigWithHCL2 for clarification.
 func TestDeleteTerraformBackendConfigWithHCL2Failure(t *testing.T) {
-	tests := []string{
-		`terraform {
-         backend "local" {
-           path = "module-{{.environment}}"
-         }
-       }`,
-		`terraform {
-        backend "concil" {
-          map = {"key": "val"}
-        }
-    }`,
+	tests := []struct {
+		config string
+	}{
+		{
+			config: `
+        terraform {
+          backend "local" {
+            path = "module-{{.environment}}"
+          }
+        }`,
+		},
+		{
+			config: `
+        terraform {
+          backend "concil" {
+            map = {"key": "val"}
+          }
+        }`,
+		},
 	}
+
 	for _, tt := range tests {
-		_, err := deleteTerraformBackendConfigWithHCL2([]byte(tt))
+		_, err := deleteTerraformBackendConfigWithHCL2([]byte(tt.config))
 		assert.NotNil(t, err)
 	}
 }

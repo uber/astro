@@ -58,8 +58,8 @@ func astDelIfExists(l *ast.ObjectList, key string) bool {
 	return false
 }
 
-func deleteTerraformBackendConfigWithHCL(in []byte) (updatedConfig []byte, err error) {
-	config, err := parseTerraformConfigWithHCL(in)
+func deleteTerraformBackendConfigWithHCL1(in []byte) (updatedConfig []byte, err error) {
+	config, err := parseTerraformConfigWithHCL1(in)
 	if err != nil {
 		return nil, err
 	}
@@ -85,13 +85,29 @@ func deleteTerraformBackendConfigWithHCL(in []byte) (updatedConfig []byte, err e
 // This method should be rewritten once hcl2 supports AST traversal and modification.
 func deleteTerraformBackendConfigWithHCL2(in []byte) (updatedConfig []byte, err error) {
 	// Regexp to find if any backend configuration exists
-	backendDefinitionRe := regexp.MustCompile(`(?s)[{\s+]backend\s+"[^"]+"\s*{`)
+	backendDefinitionRe := regexp.MustCompile(
+		// make sure `\s` matches line breaks
+		`(?s)` +
+			// match `{backend ` or ` backend `, but not `some_backend` or ` backend_confg`
+			`[{\s+]backend\s+` +
+			// backend name and opening of the configuration, e.g. `"s3" {`
+			`"[^"]+"\s*{`,
+	)
 	// Regexp to find simple backend configuration, which doesn't contain '{}' inside
-	backendBlockRe := regexp.MustCompile(`(?s)(\s*backend\s+"[^"]+"\s*{[^{]*?})`)
+	backendBlockRe := regexp.MustCompile(
+		// make sure `\s` matches line breaks
+		`(?s)` +
+			// match backend and it's name, e.g. `backend "s3"` or ` backend "s3"`,
+			// note, that opening brace before `backend` is not included in the regex,
+			// because it should not be removed.
+			`(\s*backend\s+"[^"]+"\s*` +
+			// match backend configuration block, that doesn't have inner braces
+			`{[^{]*?})`,
+	)
 	if backendDefinitionRe.Match(in) {
 		indexes := backendBlockRe.FindSubmatchIndex(in)
 		if indexes == nil {
-			return nil, fmt.Errorf("unable to delete backend config: unsupported sytax")
+			return nil, fmt.Errorf("unable to delete backend config: unsupported syntax")
 		}
 		// Remove found backend submatch from config
 		return append(in[:indexes[2]], in[indexes[3]:]...), nil
@@ -101,7 +117,7 @@ func deleteTerraformBackendConfigWithHCL2(in []byte) (updatedConfig []byte, err 
 
 func deleteTerraformBackendConfig(in []byte, v *version.Version) (updatedConfig []byte, err error) {
 	if VersionMatches(v, "<0.12") {
-		return deleteTerraformBackendConfigWithHCL(in)
+		return deleteTerraformBackendConfigWithHCL1(in)
 	}
 	return deleteTerraformBackendConfigWithHCL2(in)
 }
@@ -137,7 +153,7 @@ func deleteTerraformBackendConfigFromFile(file string, v *version.Version) error
 	return nil
 }
 
-func parseTerraformConfigWithHCL(in []byte) (*ast.ObjectList, error) {
+func parseTerraformConfigWithHCL1(in []byte) (*ast.ObjectList, error) {
 	astFile, err := hcl.ParseBytes(in)
 	if err != nil {
 		return nil, err
