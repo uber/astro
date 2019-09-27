@@ -63,9 +63,10 @@ type AstroCLI struct {
 	}
 
 	commands struct {
-		root  *cobra.Command
-		plan  *cobra.Command
-		apply *cobra.Command
+		root    *cobra.Command
+		plan    *cobra.Command
+		apply   *cobra.Command
+		version *cobra.Command
 	}
 }
 
@@ -85,10 +86,12 @@ func NewAstroCLI(opts ...Option) (*AstroCLI, error) {
 	cli.createRootCommand()
 	cli.createPlanCmd()
 	cli.createApplyCmd()
+	cli.createVersionCmd()
 
 	cli.commands.root.AddCommand(
 		cli.commands.plan,
 		cli.commands.apply,
+		cli.commands.version,
 	)
 
 	// Set trace. Note, this will turn tracing on for all instances of astro
