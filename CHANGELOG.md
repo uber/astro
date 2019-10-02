@@ -2,6 +2,7 @@
 
 ## 0.5.0 (UNRELEASED, 2019)
 
+* Add `version` command (#12)
 * Add binaries via goreleaser (#14)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
 * Refactor and improve integration tests to invoke them directly using cli

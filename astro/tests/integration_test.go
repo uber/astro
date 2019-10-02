@@ -71,10 +71,17 @@ func stringVersionMatches(v string, versionConstraint string) bool {
 }
 
 // compiles the astro binary and returns the path to it.
-func compileAstro(dir string) (string, error) {
+func compileAstro(dir string, buildFlags []string) (string, error) {
 	astroPath := filepath.Join(dir, "astro")
 	packageName := "github.com/uber/astro/astro/cli/astro"
-	out, err := exec.Command("go", "build", "-o", astroPath, packageName).CombinedOutput()
+	compileArgs := []string{"build"}
+	if len(buildFlags) > 0 {
+		for _, flag := range buildFlags {
+			compileArgs = append(compileArgs, flag)
+		}
+	}
+	compileArgs = append(compileArgs, "-o", astroPath, packageName)
+	out, err := exec.Command("go", compileArgs...).CombinedOutput()
 	if err != nil {
 		return "", errors.New(string(out))
 	}
@@ -95,7 +102,7 @@ func TestPlanInterrupted(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 	require.NoError(t, err)
 
-	astroBinary, err := compileAstro(tmpdir)
+	astroBinary, err := compileAstro(tmpdir, []string{})
 	require.NoError(t, err)
 	command := exec.Command(astroBinary, "plan")
 
@@ -217,5 +224,59 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 			_, err = os.Stat(filepath.Join("/tmp/terraform-tests/plan-detach/.astro", sessionDirs[0], "foo/sandbox/terraform.tfstate"))
 			assert.NoError(t, err)
 		})
+	}
+}
+
+func TestVersionDev(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "astro-tests")
+	defer os.RemoveAll(dir)
+	require.NoError(t, err)
+	result := RunTest(t, []string{"version"}, "/tmp/astro-tests", "")
+	assert.Equal(t, "", result.Stderr.String())
+	assert.Equal(t, "astro version dev\n", result.Stdout.String())
+	assert.Equal(t, 0, result.ExitCode)
+}
+
+func TestVersionWithLdflags(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "astro-tests")
+	defer os.RemoveAll(dir)
+	require.NoError(t, err)
+
+	stdoutBytes := &bytes.Buffer{}
+	stderrBytes := &bytes.Buffer{}
+
+	astroBinary, err := compileAstro(dir, []string{
+		"-ldflags",
+		"-X github.com/uber/astro/astro/cli/astro/cmd.version=1.2.3 " +
+			"-X github.com/uber/astro/astro/cli/astro/cmd.commit=ab123 " +
+			"-X github.com/uber/astro/astro/cli/astro/cmd.date=2019-01-01T10:00:00",
+	})
+	require.NoError(t, err)
+	command := exec.Command(astroBinary, "version")
+	command.Dir = dir
+
+	command.Stdout = stdoutBytes
+	command.Stderr = stderrBytes
+
+	err = command.Run()
+
+	require.NoError(t, err)
+
+	assert.Equal(t, "", stderrBytes.String())
+	assert.Equal(t, "astro version 1.2.3 (ab123) built 2019-01-01T10:00:00\n", stdoutBytes.String())
+}
+
+func TestAstroErrorsWithoutConfig(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "astro-tests")
+	defer os.RemoveAll(dir)
+	require.NoError(t, err)
+
+	commands := []string{"plan", "apply"}
+
+	for _, cmd := range commands {
+		result := RunTest(t, []string{cmd}, "/tmp/astro-tests", "")
+		assert.Equal(t, "unable to find config file\n", result.Stderr.String())
+		assert.Equal(t, "", result.Stdout.String())
+		assert.Equal(t, 1, result.ExitCode)
 	}
 }
