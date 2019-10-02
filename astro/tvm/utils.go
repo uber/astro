@@ -18,10 +18,12 @@ package tvm
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // downloadFile will download the specified file to the specified path.
@@ -67,6 +69,9 @@ func unzip(zipfilePath string, destDir string) error {
 		defer fh.Close()
 
 		path := filepath.Join(destDir, f.Name)
+		if !strings.HasPrefix(path, filepath.Clean(destDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path in zip: %s", path)
+		}
 
 		if f.FileInfo().IsDir() {
 			// Directory
