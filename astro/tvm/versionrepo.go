@@ -202,6 +202,7 @@ func (r *VersionRepo) List() (map[string]string, error) {
 
 	repoBaseDir := r.dir("")
 	f, err := os.Open(repoBaseDir)
+	defer f.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -210,8 +211,6 @@ func (r *VersionRepo) List() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	f.Close()
 
 	for _, file := range files {
 		terraformVersion := file.Name()
