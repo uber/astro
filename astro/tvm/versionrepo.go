@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sync"
 
@@ -39,6 +40,10 @@ const terraformBinaryFile = "terraform"
 // terraformZipFileDownloadURL is the path to download Terraform zip
 // files from the Hashicorp website.
 var terraformZipFileDownloadURL = "https://releases.hashicorp.com/terraform/%s/terraform_%s_%s_%s.zip"
+
+// versionDirectoryFormat is a regexp that matches Terraform semver,
+// e.g. "1.2.30"
+var versionDirectoryFormat = regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 // VersionRepo is a directory on the filesystem that keeps
 // Terraform binaries.
@@ -189,6 +194,32 @@ func (r *VersionRepo) Link(version string, targetPath string, overwrite bool) er
 	}
 
 	return os.Symlink(terraformPath, targetPath)
+}
+
+// List returns all locally downloaded Terraform versions and their paths.
+func (r *VersionRepo) List() (map[string]string, error) {
+	dirs := map[string]string{}
+
+	repoBaseDir := r.dir("")
+	f, err := os.Open(repoBaseDir)
+	defer f.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := f.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		terraformVersion := file.Name()
+		if file.IsDir() && versionDirectoryFormat.MatchString(terraformVersion) {
+			dirs[terraformVersion] = r.terraformPath(terraformVersion)
+		}
+	}
+
+	return dirs, nil
 }
 
 // terraformPath returns the path to the Terraform binary file with the
