@@ -50,18 +50,6 @@ lint:
 		exit 1; \
 	fi;
 
-.PHONY: release
-release:
-ifeq (, $(shell which zip))
-	$(error "goreleaser not found. Follow https://goreleaser.com/install/ to install it")
-endif
-ifndef VERSION
-	$(error "VERSION is not set, run `make release VERSION=1.2.3`")
-endif
-	git tag -a $(VERSION) -m "Release $(VERSION)"
-	git push origin $(VERSION)
-	goreleaser release --rm-dist
-
 .PHONY: test
 test:
 	go test -timeout 1m -coverprofile=.coverage.out ./... \
