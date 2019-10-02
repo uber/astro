@@ -229,9 +229,7 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 
 func TestVersionDev(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	result := RunTest(t, []string{"version"}, "/tmp/astro-tests", "")
 	assert.Equal(t, "", result.Stderr.String())
@@ -241,9 +239,7 @@ func TestVersionDev(t *testing.T) {
 
 func TestVersionWithLdflags(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
 	stdoutBytes := &bytes.Buffer{}
@@ -272,11 +268,19 @@ func TestVersionWithLdflags(t *testing.T) {
 
 func TestPlanErorrsWithoutConfig(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	result := RunTest(t, []string{"plan"}, "/tmp/astro-tests", "")
+	assert.Equal(t, "unable to find config file\n", result.Stderr.String())
+	assert.Equal(t, "", result.Stdout.String())
+	assert.Equal(t, 1, result.ExitCode)
+}
+
+func TestApplyErorrsWithoutConfig(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "astro-tests")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	result := RunTest(t, []string{"apply"}, "/tmp/astro-tests", "")
 	assert.Equal(t, "unable to find config file\n", result.Stderr.String())
 	assert.Equal(t, "", result.Stdout.String())
 	assert.Equal(t, 1, result.ExitCode)
