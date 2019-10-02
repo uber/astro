@@ -53,7 +53,7 @@ func (cli *AstroCLI) createVersionCmd() {
 				versionString = append(versionString, fmt.Sprintf("built %s", date))
 			}
 
-			println(strings.Join(versionString, " "))
+			fmt.Fprintln(cli.stdout, strings.Join(versionString, " "))
 
 			return nil
 		},

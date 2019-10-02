@@ -162,11 +162,10 @@ func (cli *AstroCLI) configureDynamicUserFlags() {
 
 func (cli *AstroCLI) createRootCommand() {
 	rootCmd := &cobra.Command{
-		Use:               "astro",
-		Short:             "A tool for managing multiple Terraform modules.",
-		SilenceUsage:      true,
-		SilenceErrors:     true,
-		PersistentPreRunE: cli.preRun,
+		Use:           "astro",
+		Short:         "A tool for managing multiple Terraform modules.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	rootCmd.PersistentFlags().BoolVarP(&cli.flags.verbose, "verbose", "v", false, "verbose output")
@@ -181,6 +180,7 @@ func (cli *AstroCLI) createApplyCmd() {
 		Use:                   "apply [flags] [-- [Terraform argument]...]",
 		DisableFlagsInUseLine: true,
 		Short:                 "Run Terraform apply on all modules",
+		PersistentPreRunE:     cli.preRun,
 		RunE:                  cli.runApply,
 	}
 
@@ -194,6 +194,7 @@ func (cli *AstroCLI) createPlanCmd() {
 		Use:                   "plan [flags] [-- [Terraform argument]...]",
 		DisableFlagsInUseLine: true,
 		Short:                 "Generate execution plans for modules",
+		PersistentPreRunE:     cli.preRun,
 		RunE:                  cli.runPlan,
 	}
 
@@ -206,6 +207,9 @@ func (cli *AstroCLI) createPlanCmd() {
 func (cli *AstroCLI) preRun(cmd *cobra.Command, args []string) error {
 	logger.Trace.Println("cli: in preRun")
 
+	if cli.config == nil {
+		return fmt.Errorf("unable to find config file")
+	}
 	// Load astro from config
 	project, err := astro.NewProject(astro.WithConfig(*cli.config))
 	if err != nil {
