@@ -2,7 +2,8 @@ name: release
 
 on:
   push:
-    tags: "*"
+    tags:
+      - "*"
 
 jobs:
   goreleaser:
