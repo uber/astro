@@ -71,14 +71,13 @@ func stringVersionMatches(v string, versionConstraint string) bool {
 }
 
 // compiles the astro binary and returns the path to it.
-func compileAstro(dir string, ldflags []string) (string, error) {
+func compileAstro(dir string, buildFlags []string) (string, error) {
 	astroPath := filepath.Join(dir, "astro")
 	packageName := "github.com/uber/astro/astro/cli/astro"
 	compileArgs := []string{"build"}
-	if len(ldflags) > 0 {
-		compileArgs = append(compileArgs, "-ldflags")
-		for _, ldflag := range ldflags {
-			compileArgs = append(compileArgs, ldflag)
+	if len(buildFlags) > 0 {
+		for _, flag := range buildFlags {
+			compileArgs = append(compileArgs, flag)
 		}
 	}
 	compileArgs = append(compileArgs, "-o", astroPath, packageName)
@@ -251,6 +250,7 @@ func TestVersionWithLdflags(t *testing.T) {
 	stderrBytes := &bytes.Buffer{}
 
 	astroBinary, err := compileAstro(dir, []string{
+		"-ldflags",
 		"-X github.com/uber/astro/astro/cli/astro/cmd.version=1.2.3 " +
 			"-X github.com/uber/astro/astro/cli/astro/cmd.commit=ab123 " +
 			"-X github.com/uber/astro/astro/cli/astro/cmd.date=2019-01-01T10:00:00",
