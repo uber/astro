@@ -51,7 +51,7 @@ lint:
 	fi;
 
 .PHONY: release
-release: vendor
+release:
 	goreleaser release --rm-dist
 
 .PHONY: test
