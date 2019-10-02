@@ -229,8 +229,8 @@ func TestProjectPlanDetachSuccess(t *testing.T) {
 
 func TestVersionDev(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	require.NoError(t, err)
 	defer os.RemoveAll(dir)
+	require.NoError(t, err)
 	result := RunTest(t, []string{"version"}, "/tmp/astro-tests", "")
 	assert.Equal(t, "", result.Stderr.String())
 	assert.Equal(t, "astro version dev\n", result.Stdout.String())
@@ -239,8 +239,8 @@ func TestVersionDev(t *testing.T) {
 
 func TestVersionWithLdflags(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	require.NoError(t, err)
 	defer os.RemoveAll(dir)
+	require.NoError(t, err)
 
 	stdoutBytes := &bytes.Buffer{}
 	stderrBytes := &bytes.Buffer{}
@@ -266,22 +266,17 @@ func TestVersionWithLdflags(t *testing.T) {
 	assert.Equal(t, "astro version 1.2.3 (ab123) built 2019-01-01T10:00:00\n", stdoutBytes.String())
 }
 
-func TestPlanErorrsWithoutConfig(t *testing.T) {
+func TestAstroErrorsWithoutConfig(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	require.NoError(t, err)
 	defer os.RemoveAll(dir)
-	result := RunTest(t, []string{"plan"}, "/tmp/astro-tests", "")
-	assert.Equal(t, "unable to find config file\n", result.Stderr.String())
-	assert.Equal(t, "", result.Stdout.String())
-	assert.Equal(t, 1, result.ExitCode)
-}
+	require.NoError(t, err)
 
-func TestApplyErorrsWithoutConfig(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "astro-tests")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
-	result := RunTest(t, []string{"apply"}, "/tmp/astro-tests", "")
-	assert.Equal(t, "unable to find config file\n", result.Stderr.String())
-	assert.Equal(t, "", result.Stdout.String())
-	assert.Equal(t, 1, result.ExitCode)
+	commands := []string{"plan", "apply"}
+
+	for _, cmd := range commands {
+		result := RunTest(t, []string{cmd}, "/tmp/astro-tests", "")
+		assert.Equal(t, "unable to find config file\n", result.Stderr.String())
+		assert.Equal(t, "", result.Stdout.String())
+		assert.Equal(t, 1, result.ExitCode)
+	}
 }
