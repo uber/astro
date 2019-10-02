@@ -1,23 +1,12 @@
 language: go
-before_install:
-- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 cache:
   directories:
     - /home/travis/.tvm
     - vendor
 env:
-- GO111MODULE=on
+  - GO111MODULE=on
 go:
-- "1.12.x"
-deploy:
-- provider: script
-  skip_cleanup: true
-  script: curl -sL https://git.io/goreleaser | bash
-  on:
-    tags: true
-    condition: $TRAVIS_OS_NAME = linux
-install:
-- make vendor
+ - "1.12.x"
 script:
 - make lint
 - make test
