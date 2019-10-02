@@ -1,7 +1,8 @@
 # astro changelog
 
-## 0.5.0 (UNRELEASED, 2018)
+## 0.5.0 (UNRELEASED, 2019)
 
+* Add binaries via goreleaser (#14)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
 * Refactor and improve integration tests to invoke them directly using cli
   rather than `os.exec` (#26)

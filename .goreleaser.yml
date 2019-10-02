@@ -1,0 +1,32 @@
+project_name: astro
+archive:
+  format_overrides:
+    - goos: darwin
+      format: zip
+  replacements:
+    amd64: 64-bit
+    386: 32-bit
+    darwin: macOS
+before:
+  hooks:
+    - go mod download
+builds:
+  - binary: astro
+    main: ./astro/cli/astro/main.go
+    env:
+      - GO111MODULE=on
+    ignore:
+      - goos: darwin
+        goarch: 386
+    ldflags:
+      - -s -w -X github.com/uber/astro/astro/cli/astro/cmd.version={{.Version}} -X github.com/uber/astro/astro/cli/astro/cmd.commit={{.ShortCommit}} -X github.com/uber/astro/astro/cli/astro/cmd.date={{.Date}}
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - "^docs:"
+    - "^test:"
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
