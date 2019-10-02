@@ -35,7 +35,6 @@
   `astro.NewProject(conf)` should be changed to:
   `astro.NewProject(astro.WithConfig(conf))`
 
-
 ## 0.4.1 (October 3, 2018)
 
 * Output policy changes in unified diff format (#2)
