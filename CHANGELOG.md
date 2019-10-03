@@ -1,7 +1,14 @@
 # astro changelog
 
-## 0.5.0 (UNRELEASED, 2019)
+## 0.5.0 (October 3, 2019)
 
+* Add ls command to tvm (#37)
+* Fix zip slip vulnerability (#47)
+* Support detach flag with Terraform 0.12 (#45)
+* Propagate SIGINT and SIGTERM to terraform (#49)
+* Fix bug in initialization of allowed values (#43)
+* Make plan output work with terraform 0.12 (#41)
+* Don't pass variables to the modules that don't declare them (#40)
 * Add `version` command (#12)
 * Add binaries via goreleaser (#14)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
