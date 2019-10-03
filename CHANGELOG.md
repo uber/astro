@@ -3,34 +3,32 @@
 ## 0.5.0 (October 3, 2019)
 
 ### Added
-* Add ls command to tvm (#37)
-* Add `version` command (#12)
-* Add binaries via goreleaser (#14)
-* Support detach flag with Terraform 0.12 (#45)
-* Make plan output work with terraform 0.12 (#41)
-* Add Travis configuration, `make lint` and git precommit hook
+* Support Terraform 0.12 (#45 #41)
+* Propagate SIGINT/SIGTERM to Terraform on shut down (avoid state locks) (#49)
+* Add `ls` command to tvm (#37)
+* Add `version` command to astro (#12)
+* Use goreleaser and github actions to make a release (#14 #50)
+* Add Travis configuration, `make lint` and git precommit hook (#13)
 
 ### Changed
-* Don't pass variables to the modules that don't declare them (#40)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
-* Refactor and improve integration tests to invoke them directly using cli
-  rather than `os.exec` (#26)
-* Remove godep and move to Go modules (vgo)
+* Refactor and improve integration tests to invoke them directly using cli (#26)
+* Remove godep and move to Go modules (vgo) (#15)
 * Change configuration syntax for remapping CLI flags to Terraform module
-  variables
+  variables (#21)
 
 ### Security
-* Fix zip slip vulnerability (#47)
+* Fix zip slip vulnerability in tvm (#47)
 
 ### Fixed
-* Propagate SIGINT and SIGTERM to terraform (#49)
+* Don't pass variables to the modules that don't declare them (#40)
 * Fix bug in initialization of allowed values (#43)
 * Fix `--help` displaying "pflag: help requested" (#1)
 * Fix issue with make not recompiling when source files changed
 * Fix issue with `make test` always returning true even when tests fail
 * Fix race condition that could cause failures due to astro downloading the
   same version of Terraform twice
-* Fix module execution errors being printed to the console twice
+* Fix module execution errors being printed to the console twice (#36)
 
 **Breaking changes:**
 

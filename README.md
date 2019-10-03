@@ -245,12 +245,3 @@ flags:
 ```
 
 This will remap the "environment" Terraform variable to `--env` on the astro command line. You can also specify a description that will show up in the `--help` text.
-
-## Contributing to astro
-
-**Releasing a new version**
-
-New version is created by [goreleaser](https://goreleaser.com/) when a new tag is pushed.
-
-To release a new version make sure CHANGELOG is updated, create and push a new tag,
-[release github action](https://github.com/uber/astro/actions?workflow=release) will do the rest.
