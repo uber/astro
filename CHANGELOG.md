@@ -17,19 +17,6 @@
 * Change configuration syntax for remapping CLI flags to Terraform module
   variables (#21)
 
-### Security
-* Fix zip slip vulnerability in tvm (#47)
-
-### Fixed
-* Don't pass variables to the modules that don't declare them (#40)
-* Fix bug in initialization of allowed values (#43)
-* Fix `--help` displaying "pflag: help requested" (#1)
-* Fix issue with make not recompiling when source files changed
-* Fix issue with `make test` always returning true even when tests fail
-* Fix race condition that could cause failures due to astro downloading the
-  same version of Terraform twice
-* Fix module execution errors being printed to the console twice (#36)
-
 **Breaking changes:**
 
 * Before, there was a `flag:` option underneath module variables in the project
@@ -47,6 +34,19 @@
 
   `astro.NewProject(conf)` should be changed to:
   `astro.NewProject(astro.WithConfig(conf))`
+
+### Security
+* Fix zip slip vulnerability in tvm (#47)
+
+### Fixed
+* Don't pass variables to the modules that don't declare them (#40)
+* Fix bug in initialization of allowed values (#43)
+* Fix `--help` displaying "pflag: help requested" (#1)
+* Fix issue with make not recompiling when source files changed
+* Fix issue with `make test` always returning true even when tests fail
+* Fix race condition that could cause failures due to astro downloading the
+  same version of Terraform twice
+* Fix module execution errors being printed to the console twice (#36)
 
 ## 0.4.1 (October 3, 2018)
 
