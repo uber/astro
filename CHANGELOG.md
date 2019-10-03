@@ -2,28 +2,35 @@
 
 ## 0.5.0 (October 3, 2019)
 
+### Added
 * Add ls command to tvm (#37)
-* Fix zip slip vulnerability (#47)
-* Support detach flag with Terraform 0.12 (#45)
-* Propagate SIGINT and SIGTERM to terraform (#49)
-* Fix bug in initialization of allowed values (#43)
-* Make plan output work with terraform 0.12 (#41)
-* Don't pass variables to the modules that don't declare them (#40)
 * Add `version` command (#12)
 * Add binaries via goreleaser (#14)
+* Support detach flag with Terraform 0.12 (#45)
+* Make plan output work with terraform 0.12 (#41)
+* Add Travis configuration, `make lint` and git precommit hook
+
+### Changed
+* Don't pass variables to the modules that don't declare them (#40)
 * Adopt options pattern for `astro.NewProject` constructor (#26)
 * Refactor and improve integration tests to invoke them directly using cli
   rather than `os.exec` (#26)
-* Add Travis configuration, `make lint` and git precommit hook
+* Remove godep and move to Go modules (vgo)
+* Change configuration syntax for remapping CLI flags to Terraform module
+  variables
+
+### Security
+* Fix zip slip vulnerability (#47)
+
+### Fixed
+* Propagate SIGINT and SIGTERM to terraform (#49)
+* Fix bug in initialization of allowed values (#43)
 * Fix `--help` displaying "pflag: help requested" (#1)
 * Fix issue with make not recompiling when source files changed
 * Fix issue with `make test` always returning true even when tests fail
 * Fix race condition that could cause failures due to astro downloading the
   same version of Terraform twice
 * Fix module execution errors being printed to the console twice
-* Remove godep and move to Go modules (vgo)
-* Change configuration syntax for remapping CLI flags to Terraform module
-  variables
 
 **Breaking changes:**
 
