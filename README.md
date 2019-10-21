@@ -233,7 +233,7 @@ app-dev-us-east-1: OK No changes (10s)
 
 #### Remapping CLI flags
 
-Astro is meant to be used every day by operators. If your Terraform variable names are long-winded to type at the CLI, you can remap them to something simpler. For example, instead of typing `--environment dev`, you may wish to shoren this to `--env dev`.
+Astro is meant to be used every day by operators. If your Terraform variable names are long-winded to type at the CLI, you can remap them to something simpler. For example, instead of typing `--environment dev`, you may wish to shorten this to `--env dev`.
 
 You can specify a `flags:` block in your project configuration, like:
 
