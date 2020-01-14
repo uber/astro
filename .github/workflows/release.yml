@@ -1,9 +1,10 @@
 name: release
 
-on:
-  push:
-    tags:
-      - "*"
+# TODO uncomment this once Uber billing plan includes access to GitHub Actions
+#on:
+#  push:
+#    tags:
+#      - "*"
 
 jobs:
   goreleaser:
