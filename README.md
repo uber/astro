@@ -25,7 +25,7 @@ This will install a binary called `astro` in your `$GOPATH/bin`.
 
 Alternatively, you can download precompiled binaries from the [Github releases page](https://github.com/uber/astro/releases).
 
-Note that from version 0.6.0 tvm, a tool to download and install specific versions of Terraform for your platforms,
+Note that from version 0.6.0 `tvm`, a tool to download and install specific versions of Terraform for your platforms,
 is packaged together with astro.
 
 **Configuration**
