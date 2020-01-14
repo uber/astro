@@ -10,3 +10,4 @@
 * for tests: set session dir to tmpdir that is cleaned up at exit
 * deb package so we can install on toolboxes
 * add a version compatibility check for 1.0
+* add github actions back once Uber billing situation is resolved. Revert PR #60
