@@ -15,7 +15,7 @@ NOTE: Astro is currently experimental.
 
 **Installation**
 
-Install Astro using go get (Go >1.13 required):
+Install Astro using go get (Go >1.12 required):
 
 ```
 GO111MODULE=on go get github.com/uber/astro/astro/cli/astro
