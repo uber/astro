@@ -1,5 +1,10 @@
 # astro changelog
 
+## 0.6.0 (January 15, 2020)
+
+### Added
+* Add `tmv` binary to astro release
+
 ## 0.5.0 (October 3, 2019)
 
 ### Added
