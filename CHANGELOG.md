@@ -3,7 +3,8 @@
 ## 0.6.0 (January 15, 2020)
 
 ### Added
-* Add `tvm` binary to astro release
+* Add `tvm` binary to astro release (#61)
+* Add release target to Makefile as github actions are no longer available (#62)
 
 ## 0.5.0 (October 3, 2019)
 
