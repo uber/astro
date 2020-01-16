@@ -50,6 +50,20 @@ lint:
 		exit 1; \
 	fi;
 
+.PHONY: release
+release:
+	if [ ! -z "$(VERSION)" ]; then \
+	    git tag -a $(VERSION) -m "new version $(VERSION)"; \
+	    git push origin $(VERSION); \
+	fi;
+	docker pull golang:1.12-stretch
+	docker run --rm \
+		-v $(PWD):/go/astro \
+		-e GITHUB_TOKEN=$(GITHUB_TOKEN) golang:1.12-stretch \
+		bash -c \
+		"curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh && \
+		cd /go/astro && /go/bin/goreleaser release --rm-dist --skip-validate"
+
 .PHONY: test
 test:
 	go test -timeout 1m -coverprofile=.coverage.out ./... \
