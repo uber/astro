@@ -16,6 +16,7 @@ builds:
     main: ./astro/cli/astro/main.go
     env:
       - GO111MODULE=on
+      - CGO_ENABLED=0
     ignore:
       - goos: darwin
         goarch: 386
@@ -26,6 +27,7 @@ builds:
     main: ./astro/tvm/cli/tvm/main.go
     env:
       - GO111MODULE=on
+      - CGO_ENABLED=0
     ignore:
       - goos: darwin
         goarch: 386

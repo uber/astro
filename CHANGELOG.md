@@ -5,6 +5,9 @@
 ### Added
 * Add `tvm` binary to astro release
 
+### Changed
+* Disable cgo in goreleaser config
+
 ## 0.5.0 (October 3, 2019)
 
 ### Added
